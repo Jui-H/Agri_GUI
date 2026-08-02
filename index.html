@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=4" />
 </head>
 <body>
   <div class="app-shell">
@@ -26,7 +26,7 @@
         <button class="nav-item" data-page="field">▦ <span>Field Setup</span></button>
         <button class="nav-item" data-page="map">⌖ <span>Live Rover Map</span></button>
         <button class="nav-item" data-page="sensor">◫ <span>Soil Sensor Data</span></button>
-        <button class="nav-item" data-page="heatmap">▤ <span>Nutrient Heatmap</span></button>
+        <button class="nav-item" data-page="nutrientHeatmapPage">▤ <span>Nutrient Heatmap</span></button>
         <button class="nav-item" data-page="crop">♧ <span>Crop Recommendation</span></button>
         <button class="nav-item" data-page="prescription">✦ <span>Fertilizer Prescription</span></button>
         <button class="nav-item" data-page="sprinkler">⌁ <span>Sprinkler Control</span></button>
@@ -153,7 +153,7 @@
                 <option value="k">Potassium</option>
               </select>
             </div>
-            <div class="heatmap" id="heatmapCanvas"></div>
+            <div class="heatmap" id="heatmap"></div>
             <div class="heat-scale"><span>Low</span><i></i><span>High</span></div>
           </section>
 
@@ -266,7 +266,7 @@
         </section>
       </section>
 
-      <section class="page" id="heatmap">
+      <section class="page" id="nutrientHeatmapPage">
         <div class="page-title"><div><h2>Nutrient Heatmap</h2><p>Compare nutrient variation across the field.</p></div></div>
         <section class="panel"><div class="heatmap large-heatmap" id="largeHeatmap"></div></section>
       </section>
@@ -363,6 +363,6 @@
     </main>
   </div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=4"></script>
 </body>
 </html>
