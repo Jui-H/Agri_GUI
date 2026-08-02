@@ -112,9 +112,9 @@ function createHeatmap(id, offset=0){
     root.appendChild(cell);
   }
 }
-createHeatmap("heatmapCanvas"); createHeatmap("largeHeatmap",8);
+createHeatmap("heatmap"); createHeatmap("largeHeatmap",8);
 document.getElementById("heatmapType").onchange=e=>{
-  const offsets={n:0,p:18,k:37}; createHeatmap("heatmapCanvas",offsets[e.target.value]); toast(`${e.target.options[e.target.selectedIndex].text} heatmap loaded`);
+  const offsets={n:0,p:18,k:37}; createHeatmap("heatmap",offsets[e.target.value]); toast(`${e.target.options[e.target.selectedIndex].text} heatmap loaded`);
 };
 
 function renderPrescription(){
