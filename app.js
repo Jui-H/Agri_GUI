@@ -119,6 +119,12 @@ function takeSample(){
   sensorRows.unshift([new Date().toLocaleTimeString(),`Z-${String(state.currentZone).padStart(2,"0")}`,n,p,k,"Valid"]);
   document.getElementById("sensorHistory").innerHTML=sensorRows.map(r=>`<tr>${r.map((v,i)=>`<td>${i===5?`<span class="badge green">${v}</span>`:v}</td>`).join("")}</tr>`).join("");
   toast("New soil sample recorded");
+  lastSensorUpdate = new Date();
+
+document.getElementById("sensorTimestamp").textContent =
+  formatTimestamp(lastSensorUpdate);
+
+updateDataAge();
 }
 document.getElementById("takeSample").onclick=takeSample;
 document.getElementById("takeSample2").onclick=takeSample;
@@ -269,3 +275,38 @@ const allAlerts=[
 function renderAlerts(){document.getElementById("allAlerts").innerHTML=allAlerts.map(a=>`<article class="alert ${a[0]}"><span>${a[1]}</span><div><strong>${a[2]}</strong><small>${a[3]}</small></div><time>${a[4]}</time></article>`).join("")}
 renderAlerts();
 document.getElementById("clearAlerts").onclick=()=>{document.getElementById("allAlerts").innerHTML="<p>No active alerts.</p>";toast("Alerts cleared")};
+let lastSensorUpdate = null;
+
+function formatTimestamp(date = new Date()) {
+  return date.toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true
+  });
+}
+
+function updateDataAge() {
+  const ageElement = document.getElementById("sensorDataAge");
+
+  if (!lastSensorUpdate) {
+    ageElement.textContent = "No data";
+    return;
+  }
+
+  const ageSeconds = Math.floor(
+    (Date.now() - lastSensorUpdate.getTime()) / 1000
+  );
+
+  if (ageSeconds < 60) {
+    ageElement.textContent = `${ageSeconds} seconds ago`;
+  } else {
+    const minutes = Math.floor(ageSeconds / 60);
+    ageElement.textContent = `${minutes} minute(s) ago`;
+  }
+}
+
+setInterval(updateDataAge, 1000);
