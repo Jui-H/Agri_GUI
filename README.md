@@ -1,4 +1,5 @@
 # AgriRover GUI
+Dashboard updated.
 
 Launch-ready static dashboard for the **Optimized Fertilization System of a Farmland Using an Autonomous Rover – Design 2**.
 
