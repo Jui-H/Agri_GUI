@@ -124,14 +124,29 @@ document.getElementById("takeSample").onclick=takeSample;
 document.getElementById("takeSample2").onclick=takeSample;
 
 function updateMissionUI(){
-  document.getElementById("batteryValue").textContent=`${state.battery}%`;
-  document.getElementById("sideBattery").textContent=`${state.battery}%`;
-  document.getElementById("batteryBar").style.width=`${state.battery}%`;
-  document.getElementById("sideBatteryBar").style.width=`${state.battery}%`;
-  document.getElementById("progressValue").textContent=`${state.progress}%`;
-  document.getElementById("missionBar").style.width=`${state.progress}%`;
-  document.getElementById("zonesValue").textContent=`${state.completed} / 64`;
-  document.getElementById("sideZones").textContent=`${state.completed} / 64`;
+  document.getElementById("batteryValue").textContent =
+    `${Math.round(state.battery)}%`;
+
+  document.getElementById("sideBattery").textContent =
+    `${Math.round(state.battery)}%`;
+
+  document.getElementById("batteryBar").style.width =
+    `${state.battery}%`;
+
+  document.getElementById("sideBatteryBar").style.width =
+    `${state.battery}%`;
+
+  document.getElementById("progressValue").textContent =
+    `${Math.round(state.progress)}%`;
+
+  document.getElementById("missionBar").style.width =
+    `${state.progress}%`;
+
+  document.getElementById("zonesValue").textContent =
+    `${state.completed} / 64`;
+
+  document.getElementById("sideZones").textContent =
+    `${state.completed} / 64`;
 }
 document.getElementById("startMission").onclick=()=>{
   if(state.emergency) return toast("Reset emergency stop first");
