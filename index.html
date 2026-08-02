@@ -125,12 +125,56 @@
               <div class="gauge danger" style="--value:18"><div><strong id="pGauge">18</strong><small>mg/kg</small></div><span>Phosphorus</span></div>
               <div class="gauge success" style="--value:78"><div><strong id="kGauge">125</strong><small>mg/kg</small></div><span>Potassium</span></div>
             </div>
-            <div class="sensor-footer">
-              <span><i class="dot"></i>Sensor online</span>
-              <span>Depth: 15 cm</span>
-              <button class="btn small" id="takeSample">Take Sample</button>
-            </div>
-          </section>
+          <section class="panel sensor-panel">
+  <div class="panel-heading">
+    <h3>NPK Real-Time Readings</h3>
+    <span class="live-dot">● Live</span>
+  </div>
+
+  <div class="gauges">
+    <div class="gauge danger" style="--value:35">
+      <div>
+        <strong id="nGauge">35</strong>
+        <small>mg/kg</small>
+      </div>
+      <span>Nitrogen</span>
+    </div>
+
+    <div class="gauge danger" style="--value:18">
+      <div>
+        <strong id="pGauge">18</strong>
+        <small>mg/kg</small>
+      </div>
+      <span>Phosphorus</span>
+    </div>
+
+    <div class="gauge success" style="--value:78">
+      <div>
+        <strong id="kGauge">125</strong>
+        <small>mg/kg</small>
+      </div>
+      <span>Potassium</span>
+    </div>
+  </div>
+
+  <div class="sensor-footer">
+    <span><i class="dot"></i>Sensor online</span>
+    <span>Depth: 15 cm</span>
+    <button class="btn small" id="takeSample">Take Sample</button>
+  </div>
+
+  <div class="data-timestamp">
+    <span>
+      Last sensor update:
+      <strong id="sensorTimestamp">Not received yet</strong>
+    </span>
+
+    <span>
+      Data age:
+      <strong id="sensorDataAge">No data</strong>
+    </span>
+  </div>
+</section>
 
           <section class="panel heatmap-panel">
             <div class="panel-heading"><h3>Nutrient Heatmap</h3>
