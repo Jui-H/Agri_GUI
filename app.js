@@ -18,12 +18,25 @@ const prescriptions = [
   {zone:"Z-05",n:60,p:25,k:140,rn:0,rp:0,rk:0,time:0,status:"Not required"}
 ];
 
-const sensorRows = [
-  ["10:41:32","Z-04",35,18,125,"Valid"],
-  ["10:38:10","Z-03",28,14,90,"Valid"],
-  ["10:35:02","Z-02",40,16,105,"Valid"],
-  ["10:31:48","Z-01",45,20,110,"Valid"]
+const defaultSensorRows = [
+  {timestamp:"2026-08-02T20:41:32+06:00",zone:"Z-04",n:35,p:18,k:125,status:"Valid"},
+  {timestamp:"2026-08-02T20:38:10+06:00",zone:"Z-03",n:28,p:14,k:90,status:"Valid"},
+  {timestamp:"2026-08-02T20:35:02+06:00",zone:"Z-02",n:40,p:16,k:105,status:"Valid"},
+  {timestamp:"2026-08-02T20:31:48+06:00",zone:"Z-01",n:45,p:20,k:110,status:"Valid"}
 ];
+
+function loadSensorRows(){
+  try {
+    const saved=localStorage.getItem("agriroverSensorHistory");
+    return saved ? JSON.parse(saved) : [...defaultSensorRows];
+  } catch(error){
+    console.error("Could not load sensor history",error);
+    return [...defaultSensorRows];
+  }
+}
+
+let sensorRows=loadSensorRows();
+let lastSensorUpdate=sensorRows.length ? new Date(sensorRows[0].timestamp) : null;
 
 function toast(message){
   const el=document.getElementById("toast");
@@ -99,9 +112,9 @@ function createHeatmap(id, offset=0){
     root.appendChild(cell);
   }
 }
-createHeatmap("heatmap"); createHeatmap("largeHeatmap",8);
+createHeatmap("heatmapCanvas"); createHeatmap("largeHeatmap",8);
 document.getElementById("heatmapType").onchange=e=>{
-  const offsets={n:0,p:18,k:37}; createHeatmap("heatmap",offsets[e.target.value]); toast(`${e.target.options[e.target.selectedIndex].text} heatmap loaded`);
+  const offsets={n:0,p:18,k:37}; createHeatmap("heatmapCanvas",offsets[e.target.value]); toast(`${e.target.options[e.target.selectedIndex].text} heatmap loaded`);
 };
 
 function renderPrescription(){
@@ -111,23 +124,136 @@ function renderPrescription(){
 }
 renderPrescription();
 
-document.getElementById("sensorHistory").innerHTML=sensorRows.map(r=>`<tr>${r.map((v,i)=>`<td>${i===5?`<span class="badge green">${v}</span>`:v}</td>`).join("")}</tr>`).join("");
+function formatTimestamp(dateValue){
+  const date=dateValue instanceof Date ? dateValue : new Date(dateValue);
+  return date.toLocaleString("en-GB",{
+    day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:true
+  });
+}
+
+function saveSensorRows(){
+  localStorage.setItem("agriroverSensorHistory",JSON.stringify(sensorRows));
+}
+
+function statusBadge(status){
+  return status==="Valid" ? "green" : "amber";
+}
+
+function renderSensorHistory(rows=sensorRows){
+  const body=document.getElementById("sensorHistory");
+  if(!body) return;
+  if(!rows.length){
+    body.innerHTML='<tr><td colspan="7" class="empty-state">No stored samples match this filter.</td></tr>';
+  } else {
+    body.innerHTML=rows.map(sample=>`<tr>
+      <td>${formatTimestamp(sample.timestamp)}</td>
+      <td>${sample.zone}</td>
+      <td>${sample.n} mg/kg</td>
+      <td>${sample.p} mg/kg</td>
+      <td>${sample.k} mg/kg</td>
+      <td><span class="badge ${statusBadge(sample.status)}">${sample.status}</span></td>
+      <td><button class="btn small view-sample" data-time="${sample.timestamp}">View</button></td>
+    </tr>`).join("");
+  }
+  const summary=document.getElementById("historySummary");
+  if(summary) summary.textContent=`Showing ${rows.length} of ${sensorRows.length} stored sample${sensorRows.length===1?"":"s"}`;
+  document.querySelectorAll(".view-sample").forEach(button=>button.onclick=()=>viewHistoricalSample(button.dataset.time));
+}
+
+function populateZoneFilter(){
+  const select=document.getElementById("historyZone");
+  if(!select) return;
+  const selected=select.value;
+  const zones=[...new Set(sensorRows.map(row=>row.zone))].sort();
+  select.innerHTML='<option value="all">All zones</option>'+zones.map(zone=>`<option value="${zone}">${zone}</option>`).join("");
+  if(zones.includes(selected)) select.value=selected;
+}
+
+function updateTimestampDisplay(){
+  const stamp=document.getElementById("sensorTimestamp");
+  if(stamp) stamp.textContent=lastSensorUpdate ? formatTimestamp(lastSensorUpdate) : "No data received";
+}
+
+function updateDataAge(){
+  const age=document.getElementById("sensorDataAge");
+  if(!age) return;
+  if(!lastSensorUpdate){ age.textContent="No data"; return; }
+  const seconds=Math.max(0,Math.floor((Date.now()-lastSensorUpdate.getTime())/1000));
+  if(seconds<60) age.textContent=`${seconds} sec ago`;
+  else if(seconds<3600) age.textContent=`${Math.floor(seconds/60)} min ago`;
+  else if(seconds<86400) age.textContent=`${Math.floor(seconds/3600)} hr ago`;
+  else age.textContent=`${Math.floor(seconds/86400)} day(s) ago`;
+}
 
 function takeSample(){
-  const n=Math.floor(30+Math.random()*20), p=Math.floor(14+Math.random()*14), k=Math.floor(105+Math.random()*35);
-  document.getElementById("nGauge").textContent=n; document.getElementById("pGauge").textContent=p; document.getElementById("kGauge").textContent=k;
-  sensorRows.unshift([new Date().toLocaleTimeString(),`Z-${String(state.currentZone).padStart(2,"0")}`,n,p,k,"Valid"]);
-  document.getElementById("sensorHistory").innerHTML=sensorRows.map(r=>`<tr>${r.map((v,i)=>`<td>${i===5?`<span class="badge green">${v}</span>`:v}</td>`).join("")}</tr>`).join("");
-  toast("New soil sample recorded");
-  lastSensorUpdate = new Date();
-
-document.getElementById("sensorTimestamp").textContent =
-  formatTimestamp(lastSensorUpdate);
-
-updateDataAge();
+  const n=Math.floor(30+Math.random()*20),p=Math.floor(14+Math.random()*14),k=Math.floor(105+Math.random()*35);
+  const now=new Date();
+  document.getElementById("nGauge").textContent=n;
+  document.getElementById("pGauge").textContent=p;
+  document.getElementById("kGauge").textContent=k;
+  lastSensorUpdate=now;
+  sensorRows.unshift({timestamp:now.toISOString(),zone:`Z-${String(state.currentZone).padStart(2,"0")}`,n,p,k,status:"Valid"});
+  saveSensorRows();
+  populateZoneFilter();
+  renderSensorHistory();
+  updateTimestampDisplay();
+  updateDataAge();
+  toast("New timestamped soil sample recorded");
 }
+
+function viewHistoricalSample(timestamp){
+  const sample=sensorRows.find(row=>row.timestamp===timestamp);
+  if(!sample) return toast("Historical sample not found");
+  document.getElementById("nGauge").textContent=sample.n;
+  document.getElementById("pGauge").textContent=sample.p;
+  document.getElementById("kGauge").textContent=sample.k;
+  document.getElementById("sensorTimestamp").textContent=formatTimestamp(sample.timestamp);
+  document.getElementById("sensorDataAge").textContent="Historical record";
+  toast(`Viewing ${sample.zone} data from ${formatTimestamp(sample.timestamp)}`);
+}
+
+function applyHistoryFilter(){
+  const from=document.getElementById("historyFrom").value;
+  const to=document.getElementById("historyTo").value;
+  const zone=document.getElementById("historyZone").value;
+  const filtered=sensorRows.filter(sample=>{
+    const time=new Date(sample.timestamp).getTime();
+    const after=!from || time>=new Date(`${from}T00:00:00`).getTime();
+    const before=!to || time<=new Date(`${to}T23:59:59`).getTime();
+    const zoneMatch=zone==="all" || sample.zone===zone;
+    return after && before && zoneMatch;
+  });
+  renderSensorHistory(filtered);
+}
+
+function resetHistoryFilter(){
+  document.getElementById("historyFrom").value="";
+  document.getElementById("historyTo").value="";
+  document.getElementById("historyZone").value="all";
+  renderSensorHistory();
+}
+
+function exportHistoryCsv(){
+  const header=["Timestamp","Zone","Nitrogen","Phosphorus","Potassium","Status"];
+  const rows=sensorRows.map(s=>[s.timestamp,s.zone,s.n,s.p,s.k,s.status]);
+  const csv=[header,...rows].map(row=>row.join(",")).join("\n");
+  const blob=new Blob([csv],{type:"text/csv"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);a.download="agrirover-sensor-history.csv";a.click();URL.revokeObjectURL(a.href);
+  toast("Sensor history CSV exported");
+}
+
+populateZoneFilter();
+renderSensorHistory();
+updateTimestampDisplay();
+updateDataAge();
+setInterval(updateDataAge,1000);
+
 document.getElementById("takeSample").onclick=takeSample;
 document.getElementById("takeSample2").onclick=takeSample;
+document.getElementById("filterHistory").onclick=applyHistoryFilter;
+document.getElementById("resetHistoryFilter").onclick=resetHistoryFilter;
+document.getElementById("exportHistoryCsv").onclick=exportHistoryCsv;
 
 function updateMissionUI(){
   document.getElementById("batteryValue").textContent =
@@ -275,38 +401,10 @@ const allAlerts=[
 function renderAlerts(){document.getElementById("allAlerts").innerHTML=allAlerts.map(a=>`<article class="alert ${a[0]}"><span>${a[1]}</span><div><strong>${a[2]}</strong><small>${a[3]}</small></div><time>${a[4]}</time></article>`).join("")}
 renderAlerts();
 document.getElementById("clearAlerts").onclick=()=>{document.getElementById("allAlerts").innerHTML="<p>No active alerts.</p>";toast("Alerts cleared")};
-let lastSensorUpdate = null;
 
-function formatTimestamp(date = new Date()) {
-  return date.toLocaleString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true
-  });
-}
-
-function updateDataAge() {
-  const ageElement = document.getElementById("sensorDataAge");
-
-  if (!lastSensorUpdate) {
-    ageElement.textContent = "No data";
-    return;
-  }
-
-  const ageSeconds = Math.floor(
-    (Date.now() - lastSensorUpdate.getTime()) / 1000
-  );
-
-  if (ageSeconds < 60) {
-    ageElement.textContent = `${ageSeconds} seconds ago`;
-  } else {
-    const minutes = Math.floor(ageSeconds / 60);
-    ageElement.textContent = `${minutes} minute(s) ago`;
-  }
-}
-
-setInterval(updateDataAge, 1000);
+document.querySelectorAll(".mission-view").forEach(button=>button.onclick=()=>{
+  const mission=button.dataset.mission;
+  const detail=document.getElementById("missionDetail");
+  detail.innerHTML=`<strong>${mission}</strong><span>Past mission summary loaded. Open Soil Sensor Data to filter and inspect timestamped sample records.</span><button class="btn small" id="openSensorHistory">Open sensor history</button>`;
+  document.getElementById("openSensorHistory").onclick=()=>navigate("sensor");
+});
