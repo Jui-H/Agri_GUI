@@ -119,62 +119,31 @@
           </section>
 
           <section class="panel sensor-panel">
-            <div class="panel-heading"><h3>NPK Real-Time Readings</h3><span class="live-dot">● Live</span></div>
+            <div class="panel-heading">
+              <h3>NPK Real-Time Readings</h3>
+              <span class="live-dot">● Live</span>
+            </div>
             <div class="gauges">
               <div class="gauge danger" style="--value:35"><div><strong id="nGauge">35</strong><small>mg/kg</small></div><span>Nitrogen</span></div>
               <div class="gauge danger" style="--value:18"><div><strong id="pGauge">18</strong><small>mg/kg</small></div><span>Phosphorus</span></div>
               <div class="gauge success" style="--value:78"><div><strong id="kGauge">125</strong><small>mg/kg</small></div><span>Potassium</span></div>
             </div>
-          <section class="panel sensor-panel">
-  <div class="panel-heading">
-    <h3>NPK Real-Time Readings</h3>
-    <span class="live-dot">● Live</span>
-  </div>
-
-  <div class="gauges">
-    <div class="gauge danger" style="--value:35">
-      <div>
-        <strong id="nGauge">35</strong>
-        <small>mg/kg</small>
-      </div>
-      <span>Nitrogen</span>
-    </div>
-
-    <div class="gauge danger" style="--value:18">
-      <div>
-        <strong id="pGauge">18</strong>
-        <small>mg/kg</small>
-      </div>
-      <span>Phosphorus</span>
-    </div>
-
-    <div class="gauge success" style="--value:78">
-      <div>
-        <strong id="kGauge">125</strong>
-        <small>mg/kg</small>
-      </div>
-      <span>Potassium</span>
-    </div>
-  </div>
-
-  <div class="sensor-footer">
-    <span><i class="dot"></i>Sensor online</span>
-    <span>Depth: 15 cm</span>
-    <button class="btn small" id="takeSample">Take Sample</button>
-  </div>
-
-  <div class="data-timestamp">
-    <span>
-      Last sensor update:
-      <strong id="sensorTimestamp">Not received yet</strong>
-    </span>
-
-    <span>
-      Data age:
-      <strong id="sensorDataAge">No data</strong>
-    </span>
-  </div>
-</section>
+            <div class="sensor-footer">
+              <span><i class="dot"></i>Sensor online</span>
+              <span>Depth: 15 cm</span>
+              <button class="btn small" id="takeSample">Take Sample</button>
+            </div>
+            <div class="data-timestamp">
+              <div>
+                <span class="timestamp-label">Last sensor update</span>
+                <strong id="sensorTimestamp">02 Aug 2026, 08:30:00 PM</strong>
+              </div>
+              <div>
+                <span class="timestamp-label">Data age</span>
+                <strong id="sensorDataAge">Demo data</strong>
+              </div>
+            </div>
+          </section>
 
           <section class="panel heatmap-panel">
             <div class="panel-heading"><h3>Nutrient Heatmap</h3>
@@ -184,7 +153,7 @@
                 <option value="k">Potassium</option>
               </select>
             </div>
-            <div class="heatmap" id="heatmap"></div>
+            <div class="heatmap" id="heatmapCanvas"></div>
             <div class="heat-scale"><span>Low</span><i></i><span>High</span></div>
           </section>
 
@@ -274,8 +243,27 @@
       </section>
 
       <section class="page" id="sensor">
-        <div class="page-title"><div><h2>Soil Sensor Data</h2><p>Inspect NPK readings and sampling history.</p></div><button class="btn primary" id="takeSample2">Take New Sample</button></div>
-        <section class="panel"><div class="table-wrap"><table><thead><tr><th>Time</th><th>Zone</th><th>N</th><th>P</th><th>K</th><th>Status</th></tr></thead><tbody id="sensorHistory"></tbody></table></div></section>
+        <div class="page-title">
+          <div><h2>Soil Sensor Data</h2><p>Inspect timestamped NPK readings and sampling history.</p></div>
+          <button class="btn primary" id="takeSample2">Take New Sample</button>
+        </div>
+        <section class="panel">
+          <div class="history-toolbar">
+            <label>From<input type="date" id="historyFrom"></label>
+            <label>To<input type="date" id="historyTo"></label>
+            <label>Zone<select id="historyZone"><option value="all">All zones</option></select></label>
+            <button class="btn primary" id="filterHistory">Apply Filter</button>
+            <button class="btn secondary" id="resetHistoryFilter">Reset</button>
+            <button class="btn secondary" id="exportHistoryCsv">Export CSV</button>
+          </div>
+          <div class="history-summary" id="historySummary">Showing all stored samples</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Date & Time</th><th>Zone</th><th>N</th><th>P</th><th>K</th><th>Status</th><th>Action</th></tr></thead>
+              <tbody id="sensorHistory"></tbody>
+            </table>
+          </div>
+        </section>
       </section>
 
       <section class="page" id="heatmap">
@@ -355,12 +343,15 @@
       </section>
 
       <section class="page" id="history">
-        <div class="page-title"><div><h2>Mission History</h2><p>Review previous field missions and exported reports.</p></div></div>
-        <section class="panel"><div class="table-wrap"><table><thead><tr><th>Date</th><th>Field</th><th>Crop</th><th>Zones</th><th>Duration</th><th>Status</th></tr></thead><tbody>
-          <tr><td>03 May 2026</td><td>BRAC Test Field</td><td>Rice</td><td>64</td><td>01:36:20</td><td><span class="badge green">Completed</span></td></tr>
-          <tr><td>29 Apr 2026</td><td>Demo Plot A</td><td>Maize</td><td>36</td><td>00:52:08</td><td><span class="badge green">Completed</span></td></tr>
-          <tr><td>22 Apr 2026</td><td>Demo Plot B</td><td>Wheat</td><td>25</td><td>00:41:44</td><td><span class="badge amber">Interrupted</span></td></tr>
-        </tbody></table></div></section>
+        <div class="page-title"><div><h2>Mission History</h2><p>Review previous field missions and open their recorded data.</p></div></div>
+        <section class="panel">
+          <div class="table-wrap"><table><thead><tr><th>Date & Time</th><th>Field</th><th>Crop</th><th>Zones</th><th>Duration</th><th>Status</th><th>Action</th></tr></thead><tbody>
+            <tr><td>03 May 2026, 10:30 AM</td><td>BRAC Test Field</td><td>Rice</td><td>64</td><td>01:36:20</td><td><span class="badge green">Completed</span></td><td><button class="btn small mission-view" data-mission="BRAC Test Field">View data</button></td></tr>
+            <tr><td>29 Apr 2026, 09:15 AM</td><td>Demo Plot A</td><td>Maize</td><td>36</td><td>00:52:08</td><td><span class="badge green">Completed</span></td><td><button class="btn small mission-view" data-mission="Demo Plot A">View data</button></td></tr>
+            <tr><td>22 Apr 2026, 03:05 PM</td><td>Demo Plot B</td><td>Wheat</td><td>25</td><td>00:41:44</td><td><span class="badge amber">Interrupted</span></td><td><button class="btn small mission-view" data-mission="Demo Plot B">View data</button></td></tr>
+          </tbody></table></div>
+          <div class="mission-detail" id="missionDetail"><span>Select a mission to view its past data summary.</span></div>
+        </section>
       </section>
 
       <section class="page" id="alerts">
