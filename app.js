@@ -1,47 +1,39 @@
 /* =========================================================
-   AGRIROVER GUI
-   REAL BASE-STATION VERSION
-   ========================================================= */
+   AGRIROVER FRONTEND
+   VERSION 7
+========================================================= */
 
 
 /* =========================================================
-   MAIN STATE
-   ========================================================= */
+   GLOBAL STATE
+========================================================= */
 
 const state = {
-
   running: false,
-
   paused: false,
-
   emergency: false,
 
   battery: 0,
+  speed: 0,
 
   progress: 0,
-
   completed: 0,
 
   currentZone: 0,
 
   rows: 8,
-
   cols: 8,
-
   totalZones: 64,
 
   sprayProgress: 0
-
 };
 
 
-
 /* =========================================================
-   SERIAL / BASE STATION STATE
-   ========================================================= */
+   BASE STATION SERIAL
+========================================================= */
 
 let serialPort = null;
-
 let serialReader = null;
 
 let serialBuffer = "";
@@ -51,105 +43,61 @@ let baseStationConnected = false;
 let lastRoverPacketAt = null;
 
 
-
 /* =========================================================
-   REAL FIELD DATA
-   ========================================================= */
-
-const liveZoneData = new Map();
-
-let selectedHeatmapNutrient = "n";
-
-
-
-/* =========================================================
-   FERTILIZER PRESCRIPTION
-   ========================================================= */
-
-const prescriptions = [
-
-  {
-    zone: "Z-01",
-    n: 45,
-    p: 20,
-    k: 110,
-    rn: 5,
-    rp: 0,
-    rk: 0,
-    time: 8,
-    status: "Pending"
-  },
-
-  {
-    zone: "Z-02",
-    n: 40,
-    p: 16,
-    k: 105,
-    rn: 8,
-    rp: 5,
-    rk: 0,
-    time: 13,
-    status: "Pending"
-  },
-
-  {
-    zone: "Z-03",
-    n: 28,
-    p: 14,
-    k: 90,
-    rn: 12,
-    rp: 8,
-    rk: 0,
-    time: 18,
-    status: "Pending"
-  },
-
-  {
-    zone: "Z-04",
-    n: 35,
-    p: 18,
-    k: 125,
-    rn: 10,
-    rp: 5,
-    rk: 0,
-    time: 15,
-    status: "Pending"
-  },
-
-  {
-    zone: "Z-05",
-    n: 60,
-    p: 25,
-    k: 140,
-    rn: 0,
-    rp: 0,
-    rk: 0,
-    time: 0,
-    status: "Not required"
-  }
-
-];
-
-
-
-/* =========================================================
-   SENSOR HISTORY
-   ========================================================= */
+   CAMERA
+========================================================= */
 
 /*
-   A NEW localStorage key is used so old dummy values
-   from your previous GUI do not appear as real data.
+   Later your backend will provide this URL.
+
+   Example:
+
+   http://192.168.1.5:8000/camera
+
+   or
+
+   http://localhost:8000/camera
 */
 
-function loadSensorRows() {
+let cameraStreamUrl = "";
+
+
+/* =========================================================
+   TELEMETRY
+========================================================= */
+
+let latestTelemetry = null;
+
+let telemetryPacketCounter = 0;
+
+
+/* =========================================================
+   HEATMAP DATA
+========================================================= */
+
+const liveZoneData =
+  new Map();
+
+let selectedHeatmapNutrient =
+  "n";
+
+
+/* =========================================================
+   HISTORY
+========================================================= */
+
+const STORAGE_KEY =
+  "agriroverSensorHistoryV7";
+
+
+function loadHistory() {
 
   try {
 
     const saved =
       localStorage.getItem(
-        "agriroverRealSensorHistoryV1"
+        STORAGE_KEY
       );
-
 
     return saved
       ? JSON.parse(saved)
@@ -160,10 +108,9 @@ function loadSensorRows() {
   catch (error) {
 
     console.error(
-      "Could not load sensor history",
+      "History load error:",
       error
     );
-
 
     return [];
 
@@ -173,46 +120,63 @@ function loadSensorRows() {
 
 
 let sensorRows =
-  loadSensorRows();
+  loadHistory();
 
 
 let lastSensorUpdate =
   sensorRows.length
-    ? new Date(sensorRows[0].timestamp)
+    ? new Date(
+        sensorRows[0].timestamp
+      )
     : null;
 
 
+/* =========================================================
+   PRESCRIPTIONS
+========================================================= */
+
+let prescriptions =
+  [];
+
 
 /* =========================================================
-   HELPERS
-   ========================================================= */
+   ALERTS
+========================================================= */
+
+let systemAlerts =
+  [];
+
+
+/* =========================================================
+   UTILITIES
+========================================================= */
 
 function toast(message) {
 
   const element =
-    document.getElementById("toast");
-
+    document.getElementById(
+      "toast"
+    );
 
   element.textContent =
     message;
-
 
   element.classList.add(
     "show"
   );
 
-
   clearTimeout(
     element.timer
   );
 
-
   element.timer =
     setTimeout(
       () => {
+
         element.classList.remove(
           "show"
         );
+
       },
       2600
     );
@@ -220,41 +184,14 @@ function toast(message) {
 }
 
 
-
-function normalizeZone(zone) {
-
-  if (!zone)
-    return "Z-01";
-
-
-  const cleaned =
-    String(zone)
-      .toUpperCase()
-      .replace("Z-", "")
-      .replace("Z", "");
-
-
-  const number =
-    Number(cleaned);
-
-
-  if (Number.isNaN(number))
-    return zone;
-
-
-  return `Z-${String(number).padStart(2, "0")}`;
-
-}
-
-
-
-function formatTimestamp(dateValue) {
+function formatTimestamp(
+  value = new Date()
+) {
 
   const date =
-    dateValue instanceof Date
-      ? dateValue
-      : new Date(dateValue);
-
+    value instanceof Date
+      ? value
+      : new Date(value);
 
   return date.toLocaleString(
     "en-GB",
@@ -262,9 +199,11 @@ function formatTimestamp(dateValue) {
       day: "2-digit",
       month: "short",
       year: "numeric",
+
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
+
       hour12: true
     }
   );
@@ -272,60 +211,83 @@ function formatTimestamp(dateValue) {
 }
 
 
+function normalizeZone(zone) {
+
+  if (!zone)
+    return "Z-01";
+
+  const cleaned =
+    String(zone)
+      .toUpperCase()
+      .replace("Z-", "")
+      .replace("Z", "");
+
+  const number =
+    Number(cleaned);
+
+  if (
+    Number.isNaN(number)
+  ) {
+
+    return zone;
+
+  }
+
+  return (
+    "Z-" +
+    String(number)
+      .padStart(2, "0")
+  );
+
+}
+
 
 function formatEta(seconds) {
 
+  const number =
+    Number(seconds);
+
   if (
-    seconds === undefined ||
-    seconds === null ||
-    Number.isNaN(Number(seconds))
+    Number.isNaN(number)
   ) {
 
     return "--:--:--";
 
   }
 
-
   const value =
     Math.max(
       0,
-      Math.floor(
-        Number(seconds)
-      )
+      Math.floor(number)
     );
 
-
-  const hours =
+  const h =
     Math.floor(
       value / 3600
     );
 
-
-  const minutes =
+  const m =
     Math.floor(
       (value % 3600) / 60
     );
 
-
-  const secs =
+  const s =
     value % 60;
 
-
   return (
-    String(hours).padStart(2, "0") +
+    String(h).padStart(2, "0") +
     ":" +
-    String(minutes).padStart(2, "0") +
+    String(m).padStart(2, "0") +
     ":" +
-    String(secs).padStart(2, "0")
+    String(s).padStart(2, "0")
   );
 
 }
 
 
-
 /* =========================================================
    CLOCK
-   ========================================================= */
+========================================================= */
 
 function updateClock() {
 
@@ -342,61 +304,79 @@ setInterval(
   1000
 );
 
-
 updateClock();
-
 
 
 /* =========================================================
    NAVIGATION
-   ========================================================= */
+========================================================= */
 
-function navigate(id) {
+function navigate(pageId) {
 
   document
-    .querySelectorAll(".page")
+    .querySelectorAll(
+      ".page"
+    )
     .forEach(
-      page =>
+      page => {
+
         page.classList.remove(
           "active"
-        )
+        );
+
+      }
     );
 
 
   document
-    .querySelectorAll(".nav-item")
+    .querySelectorAll(
+      ".nav-item"
+    )
     .forEach(
-      item =>
+      item => {
+
         item.classList.remove(
           "active"
-        )
+        );
+
+      }
     );
 
 
   const page =
-    document.getElementById(id);
+    document.getElementById(
+      pageId
+    );
 
 
-  if (page)
+  if (page) {
+
     page.classList.add(
       "active"
     );
 
+  }
 
-  const navigation =
+
+  const nav =
     document.querySelector(
-      `.nav-item[data-page="${id}"]`
+      `.nav-item[data-page="${pageId}"]`
     );
 
 
-  if (navigation)
-    navigation.classList.add(
+  if (nav) {
+
+    nav.classList.add(
       "active"
     );
 
+  }
+
 
   document
-    .getElementById("sidebar")
+    .getElementById(
+      "sidebar"
+    )
     .classList.remove(
       "open"
     );
@@ -404,43 +384,21 @@ function navigate(id) {
 }
 
 
-
-document
-  .querySelectorAll(".nav-item")
-  .forEach(
-    button => {
-
-      button.addEventListener(
-        "click",
-        () =>
-          navigate(
-            button.dataset.page
-          )
-      );
-
-    }
-  );
-
-
-
 document
   .querySelectorAll(
-    "[data-page-link]"
+    ".nav-item"
   )
   .forEach(
     button => {
 
-      button.addEventListener(
-        "click",
+      button.onclick =
         () =>
           navigate(
-            button.dataset.pageLink
-          )
-      );
+            button.dataset.page
+          );
 
     }
   );
-
 
 
 document.getElementById(
@@ -459,19 +417,15 @@ document.getElementById(
   };
 
 
-
 /* =========================================================
-   BASE STATION CONNECTION
-   ========================================================= */
+   BASE STATION SERIAL CONNECTION
+========================================================= */
 
 async function connectBaseStation() {
 
-  /*
-     If already connected,
-     button acts as Disconnect.
-  */
-
-  if (baseStationConnected) {
+  if (
+    baseStationConnected
+  ) {
 
     await disconnectBaseStation();
 
@@ -480,11 +434,13 @@ async function connectBaseStation() {
   }
 
 
-  if (!("serial" in navigator)) {
+  if (
+    !("serial" in navigator)
+  ) {
 
     alert(
-      "Web Serial is not supported in this browser.\n\n" +
-      "Open this GitHub Pages GUI using desktop Google Chrome or Microsoft Edge."
+      "Web Serial is not supported.\n\n" +
+      "Please use desktop Chrome or Microsoft Edge."
     );
 
     return;
@@ -497,14 +453,6 @@ async function connectBaseStation() {
     serialPort =
       await navigator.serial.requestPort();
 
-
-    /*
-       IMPORTANT:
-
-       Arduino Nano must also use:
-
-       Serial.begin(115200);
-    */
 
     await serialPort.open(
       {
@@ -522,7 +470,7 @@ async function connectBaseStation() {
     );
 
 
-    addSystemLog(
+    addAlert(
       "success",
       "Base station connected",
       "USB serial connection established"
@@ -530,11 +478,11 @@ async function connectBaseStation() {
 
 
     toast(
-      "Base station connected"
+      "Base Station connected"
     );
 
 
-    readBaseStation();
+    readSerialLoop();
 
   }
 
@@ -547,13 +495,19 @@ async function connectBaseStation() {
 
 
     toast(
-      "Base station connection failed"
+      `Connection failed: ${error.message || error.name}`
+    );
+
+
+    addAlert(
+      "error",
+      "Base station connection failed",
+      error.message || error.name
     );
 
   }
 
 }
-
 
 
 async function disconnectBaseStation() {
@@ -578,7 +532,6 @@ async function disconnectBaseStation() {
   catch (error) {
 
     console.log(
-      "Disconnect:",
       error
     );
 
@@ -586,10 +539,10 @@ async function disconnectBaseStation() {
 
 
   serialReader = null;
-
   serialPort = null;
 
-  baseStationConnected = false;
+  baseStationConnected =
+    false;
 
 
   updateBaseStationStatus(
@@ -598,26 +551,25 @@ async function disconnectBaseStation() {
 
 
   toast(
-    "Base station disconnected"
+    "Base Station disconnected"
   );
 
 }
-
 
 
 function updateBaseStationStatus(
   connected
 ) {
 
-  const text =
-    document.getElementById(
-      "baseStatusText"
-    );
-
-
   const dot =
     document.getElementById(
       "baseStatusDot"
+    );
+
+
+  const text =
+    document.getElementById(
+      "baseStatusText"
     );
 
 
@@ -629,18 +581,17 @@ function updateBaseStationStatus(
 
   if (connected) {
 
-    text.textContent =
-      "Connected";
-
-
     dot.classList.remove(
       "disconnected-dot"
     );
 
-
     dot.classList.add(
       "connected-dot"
     );
+
+
+    text.textContent =
+      "Connected";
 
 
     button.textContent =
@@ -655,18 +606,17 @@ function updateBaseStationStatus(
 
   else {
 
-    text.textContent =
-      "Disconnected";
-
-
     dot.classList.remove(
       "connected-dot"
     );
 
-
     dot.classList.add(
       "disconnected-dot"
     );
+
+
+    text.textContent =
+      "Disconnected";
 
 
     button.textContent =
@@ -682,24 +632,17 @@ function updateBaseStationStatus(
 }
 
 
-
-document
-  .getElementById(
-    "connectBaseStation"
-  )
-  .addEventListener(
-    "click",
-    connectBaseStation
-  );
-
+document.getElementById(
+  "connectBaseStation"
+).onclick =
+  connectBaseStation;
 
 
 /* =========================================================
-   READ USB SERIAL
-   BASE NANO -> GUI
-   ========================================================= */
+   SERIAL READER
+========================================================= */
 
-async function readBaseStation() {
+async function readSerialLoop() {
 
   const decoder =
     new TextDecoder();
@@ -764,20 +707,22 @@ async function readBaseStation() {
 
 
             if (
-              packet.length > 0
+              !packet
             ) {
 
-              console.log(
-                "BASE -> GUI:",
-                packet
-              );
-
-
-              processBaseStationPacket(
-                packet
-              );
+              continue;
 
             }
+
+
+            addTelemetryConsoleLine(
+              packet
+            );
+
+
+            processBaseStationPacket(
+              packet
+            );
 
           }
 
@@ -799,21 +744,17 @@ async function readBaseStation() {
 
   catch (error) {
 
-    if (baseStationConnected) {
-
-      console.error(
-        "Serial read error:",
-        error
-      );
+    console.error(
+      "Serial reading error:",
+      error
+    );
 
 
-      addSystemLog(
-        "warning",
-        "Base station communication lost",
-        "USB serial reading stopped"
-      );
-
-    }
+    addAlert(
+      "warning",
+      "Serial communication stopped",
+      error.message || "Unknown serial error"
+    );
 
   }
 
@@ -832,10 +773,9 @@ async function readBaseStation() {
 }
 
 
-
 /* =========================================================
-   GUI -> BASE NANO
-   ========================================================= */
+   SEND COMMAND TO BASE STATION
+========================================================= */
 
 async function sendBaseCommand(
   command
@@ -851,13 +791,13 @@ async function sendBaseCommand(
       "Connect Base Station first"
     );
 
-
     return false;
 
   }
 
 
-  let writer = null;
+  let writer =
+    null;
 
 
   try {
@@ -883,7 +823,7 @@ async function sendBaseCommand(
     );
 
 
-    addSystemLog(
+    addAlert(
       "info",
       "Command sent",
       command
@@ -913,72 +853,73 @@ async function sendBaseCommand(
 
   finally {
 
-    if (writer)
+    if (writer) {
+
       writer.releaseLock();
+
+    }
 
   }
 
 }
 
 
-
 /* =========================================================
-   EXPECTED ROVER TELEMETRY PACKET
-   ========================================================= */
+   EXPECTED TELEMETRY PACKET
 
-/*
+ROVER,BASE,TEL,
+packet,
+zone,
+N,
+P,
+K,
+moisture,
+temperature,
+humidity,
+pH,
+battery,
+speed,
+latitude,
+longitude,
+completed,
+ETA,
+status
 
-ROVER,BASE,TEL,Z04,35,18,125,82,0.8,23.685123,90.356789,29,2535,SAMPLING
+Example:
 
-0   ROVER
-1   BASE
-2   TEL
-3   Zone
-4   Nitrogen
-5   Phosphorus
-6   Potassium
-7   Battery %
-8   Speed m/s
-9   Latitude
-10  Longitude
-11  Completed zones
-12  ETA in seconds
-13  Rover status
+ROVER,BASE,TEL,1001,Z04,35,18,125,62,28.4,76,6.5,82,0.8,23.685123,90.356789,29,2535,SAMPLING
 
-*/
-
+========================================================= */
 
 function processBaseStationPacket(
   packet
 ) {
 
   const parts =
-    packet.split(
-      ","
-    );
+    packet
+      .split(",")
+      .map(
+        value =>
+          value.trim()
+      );
 
 
   const source =
     parts[0]
-      ?.trim()
-      .toUpperCase();
+      ?.toUpperCase();
 
 
   const destination =
     parts[1]
-      ?.trim()
-      .toUpperCase();
+      ?.toUpperCase();
 
 
   const type =
     parts[2]
-      ?.trim()
-      .toUpperCase();
+      ?.toUpperCase();
 
 
-  /* ------------------------------
-     ROVER TELEMETRY
-  ------------------------------ */
+  /* REAL TELEMETRY */
 
   if (
     source === "ROVER" &&
@@ -987,14 +928,13 @@ function processBaseStationPacket(
   ) {
 
     if (
-      parts.length < 14
+      parts.length < 19
     ) {
 
       console.warn(
         "Incomplete telemetry packet:",
         packet
       );
-
 
       return;
 
@@ -1003,60 +943,56 @@ function processBaseStationPacket(
 
     const data = {
 
+      packetNumber:
+        Number(parts[3]),
+
       zone:
         normalizeZone(
-          parts[3]
-        ),
-
-      nitrogen:
-        Number(
           parts[4]
         ),
 
+      nitrogen:
+        Number(parts[5]),
+
       phosphorus:
-        Number(
-          parts[5]
-        ),
+        Number(parts[6]),
 
       potassium:
-        Number(
-          parts[6]
-        ),
+        Number(parts[7]),
+
+      moisture:
+        Number(parts[8]),
+
+      temperature:
+        Number(parts[9]),
+
+      humidity:
+        Number(parts[10]),
+
+      ph:
+        Number(parts[11]),
 
       battery:
-        Number(
-          parts[7]
-        ),
+        Number(parts[12]),
 
       speed:
-        Number(
-          parts[8]
-        ),
+        Number(parts[13]),
 
       latitude:
-        Number(
-          parts[9]
-        ),
+        Number(parts[14]),
 
       longitude:
-        Number(
-          parts[10]
-        ),
+        Number(parts[15]),
 
       completed:
-        Number(
-          parts[11]
-        ),
+        Number(parts[16]),
 
       etaSeconds:
-        Number(
-          parts[12]
-        ),
+        Number(parts[17]),
 
       roverStatus:
-        parts[13]
-          ?.trim()
-          .toUpperCase()
+        parts[18]
+          ?.toUpperCase()
 
     };
 
@@ -1071,23 +1007,28 @@ function processBaseStationPacket(
   }
 
 
-  /* ------------------------------
-     ROVER ACK
-  ------------------------------ */
+  /* ROVER ACK */
 
   if (
     source === "ROVER" &&
     type === "ACK"
   ) {
 
-    const command =
+    const message =
       parts
         .slice(3)
         .join(",");
 
 
-    processRoverAck(
-      command
+    toast(
+      `Rover confirmed: ${message}`
+    );
+
+
+    addAlert(
+      "success",
+      "Rover acknowledgement",
+      message
     );
 
 
@@ -1096,9 +1037,7 @@ function processBaseStationPacket(
   }
 
 
-  /* ------------------------------
-     BASE ACK
-  ------------------------------ */
+  /* BASE ACK */
 
   if (
     source === "BASE" &&
@@ -1116,9 +1055,7 @@ function processBaseStationPacket(
   }
 
 
-  /* ------------------------------
-     BASE FERTILIZER STATUS
-  ------------------------------ */
+  /* FERTILIZER STATUS */
 
   if (
     source === "BASE" &&
@@ -1135,77 +1072,32 @@ function processBaseStationPacket(
 
   }
 
-
-  console.log(
-    "Unrecognized serial line:",
-    packet
-  );
-
 }
 
 
-
 /* =========================================================
-   PROCESS REAL ROVER TELEMETRY
-   ========================================================= */
+   PROCESS ROVER TELEMETRY
+========================================================= */
 
 function processRoverTelemetry(
   data
 ) {
 
+  latestTelemetry =
+    data;
+
+
+  telemetryPacketCounter =
+    data.packetNumber;
+
+
   lastRoverPacketAt =
     new Date();
 
 
-  /* Rover connection */
+  lastSensorUpdate =
+    lastRoverPacketAt;
 
-  setRoverOnline(
-    true
-  );
-
-
-  /* NPK */
-
-  updateGauge(
-    "nGauge",
-    data.nitrogen,
-    100
-  );
-
-
-  updateGauge(
-    "pGauge",
-    data.phosphorus,
-    100
-  );
-
-
-  updateGauge(
-    "kGauge",
-    data.potassium,
-    200
-  );
-
-
-  document.getElementById(
-    "zoneN"
-  ).textContent =
-    `${Math.round(data.nitrogen)} mg/kg`;
-
-
-  document.getElementById(
-    "zoneP"
-  ).textContent =
-    `${Math.round(data.phosphorus)} mg/kg`;
-
-
-  document.getElementById(
-    "zoneK"
-  ).textContent =
-    `${Math.round(data.potassium)} mg/kg`;
-
-
-  /* Battery */
 
   state.battery =
     Math.max(
@@ -1217,7 +1109,9 @@ function processRoverTelemetry(
     );
 
 
-  /* Current zone */
+  state.speed =
+    data.speed;
+
 
   const zoneNumber =
     Number(
@@ -1240,8 +1134,6 @@ function processRoverTelemetry(
   }
 
 
-  /* Progress */
-
   state.completed =
     Math.max(
       0,
@@ -1261,335 +1153,97 @@ function processRoverTelemetry(
       : 0;
 
 
-  /* Dashboard */
-
-  updateMissionUI();
-
-
-  document.getElementById(
-    "speedValue"
-  ).textContent =
-    `${data.speed.toFixed(1)} m/s`;
-
-
-  document.getElementById(
-    "currentZone"
-  ).textContent =
-    data.zone;
-
-
-  document.getElementById(
-    "zoneTitle"
-  ).textContent =
-    data.zone;
-
-
-  document.getElementById(
-    "controlZone"
-  ).textContent =
-    data.zone;
-
-
-  document.getElementById(
-    "zoneGps"
-  ).textContent =
-    `${data.latitude.toFixed(6)}° N, ` +
-    `${data.longitude.toFixed(6)}° E`;
-
-
-  document.getElementById(
-    "remainingTime"
-  ).textContent =
-    formatEta(
-      data.etaSeconds
-    );
-
-
-  document.getElementById(
-    "missionStatus"
-  ).textContent =
-    data.roverStatus ||
-    "ACTIVE";
-
-
-  document.getElementById(
-    "overviewState"
-  ).textContent =
-    "Live";
-
-
-  document.getElementById(
-    "zoneSampleStatus"
-  ).textContent =
-    "Sampled";
-
-
-  document.getElementById(
-    "zoneSampleStatus"
-  ).className =
-    "badge green";
-
-
-  /* Sensor state */
-
-  document.getElementById(
-    "sensorStatusText"
-  ).textContent =
-    "Receiving rover data";
-
-
-  const sensorDot =
-    document.getElementById(
-      "sensorStatusDot"
-    );
-
-
-  sensorDot.classList.remove(
-    "disconnected-dot"
+  setRoverOnline(
+    true
   );
 
 
-  sensorDot.classList.add(
-    "connected-dot"
+  updateMissionDashboard(
+    data
   );
 
 
-  /* Timestamp */
-
-  const now =
-    new Date();
-
-
-  lastSensorUpdate =
-    now;
+  updateLiveTelemetry(
+    data
+  );
 
 
-  updateTimestampDisplay();
+  updateLiveRoverPage(
+    data
+  );
 
-  updateDataAge();
+
+  updateCurrentZoneInfo(
+    data
+  );
 
 
-  /* Store zone measurement */
+  updateNpkGauges(
+    data
+  );
+
+
+  saveTelemetrySample(
+    data
+  );
+
 
   liveZoneData.set(
     data.zone,
     {
-      n: data.nitrogen,
-      p: data.phosphorus,
-      k: data.potassium,
-      latitude: data.latitude,
-      longitude: data.longitude,
+      n:
+        data.nitrogen,
+
+      p:
+        data.phosphorus,
+
+      k:
+        data.potassium,
+
+      moisture:
+        data.moisture,
+
+      temperature:
+        data.temperature,
+
+      humidity:
+        data.humidity,
+
+      ph:
+        data.ph,
+
+      latitude:
+        data.latitude,
+
+      longitude:
+        data.longitude,
+
       timestamp:
-        now.toISOString()
+        new Date().toISOString()
     }
   );
 
 
-  saveLiveRoverSample(
-    data,
-    now
+  updateRecommendationInputs(
+    data
   );
 
-
-  /* Set latest values for crop page */
-
-  document.getElementById(
-    "recN"
-  ).value =
-    data.nitrogen;
-
-
-  document.getElementById(
-    "recP"
-  ).value =
-    data.phosphorus;
-
-
-  document.getElementById(
-    "recK"
-  ).value =
-    data.potassium;
-
-
-  renderMaps();
 
   renderRealHeatmaps();
 
+
+  updateTimestampDisplay();
+
 }
 
 
-
 /* =========================================================
-   ROVER ONLINE / OFFLINE
-   ========================================================= */
+   DASHBOARD
+========================================================= */
 
-function setRoverOnline(
-  online
+function updateMissionDashboard(
+  data
 ) {
-
-  const text =
-    document.getElementById(
-      "roverStatusText"
-    );
-
-
-  const side =
-    document.getElementById(
-      "sideRoverStatus"
-    );
-
-
-  const dot =
-    document.getElementById(
-      "roverStatusDot"
-    );
-
-
-  if (online) {
-
-    text.textContent =
-      "Connected";
-
-
-    side.textContent =
-      "Connected";
-
-
-    side.className =
-      "ok";
-
-
-    dot.classList.remove(
-      "disconnected-dot"
-    );
-
-
-    dot.classList.add(
-      "connected-dot"
-    );
-
-  }
-
-  else {
-
-    text.textContent =
-      "No Signal";
-
-
-    side.textContent =
-      "No Signal";
-
-
-    side.className =
-      "";
-
-
-    dot.classList.remove(
-      "connected-dot"
-    );
-
-
-    dot.classList.add(
-      "disconnected-dot"
-    );
-
-  }
-
-}
-
-
-
-/*
-  If no telemetry arrives for 5 seconds,
-  show rover as offline.
-*/
-
-setInterval(
-  () => {
-
-    if (!lastRoverPacketAt)
-      return;
-
-
-    const age =
-      Date.now() -
-      lastRoverPacketAt.getTime();
-
-
-    if (
-      age > 5000
-    ) {
-
-      setRoverOnline(
-        false
-      );
-
-    }
-
-  },
-  1000
-);
-
-
-
-/* =========================================================
-   GAUGES
-   ========================================================= */
-
-function updateGauge(
-  id,
-  value,
-  maxValue
-) {
-
-  const text =
-    document.getElementById(
-      id
-    );
-
-
-  if (!text)
-    return;
-
-
-  text.textContent =
-    Math.round(value);
-
-
-  const gauge =
-    text.closest(
-      ".gauge"
-    );
-
-
-  if (!gauge)
-    return;
-
-
-  const percentage =
-    Math.max(
-      0,
-      Math.min(
-        100,
-        (value / maxValue) * 100
-      )
-    );
-
-
-  gauge.style.setProperty(
-    "--value",
-    percentage
-  );
-
-}
-
-
-
-/* =========================================================
-   MISSION UI
-   ========================================================= */
-
-function updateMissionUI() {
 
   document.getElementById(
     "batteryValue"
@@ -1613,6 +1267,18 @@ function updateMissionUI() {
     "sideBatteryBar"
   ).style.width =
     `${state.battery}%`;
+
+
+  document.getElementById(
+    "speedValue"
+  ).textContent =
+    `${data.speed.toFixed(1)} m/s`;
+
+
+  document.getElementById(
+    "currentZone"
+  ).textContent =
+    data.zone;
 
 
   document.getElementById(
@@ -1642,404 +1308,1397 @@ function updateMissionUI() {
   document.getElementById(
     "zonesRemaining"
   ).textContent =
-    `${
-      Math.max(
-        0,
-        state.totalZones -
-        state.completed
-      )
-    } remaining`;
-
-}
-
-
-
-/* =========================================================
-   MAP
-   ========================================================= */
-
-function renderMaps() {
-
-  createMap(
-    "fieldMap"
-  );
-
-
-  createMap(
-    "largeMap"
-  );
-
-}
-
-
-
-function createMap(
-  containerId
-) {
-
-  const map =
-    document.getElementById(
-      containerId
-    );
-
-
-  if (!map)
-    return;
-
-
-  map.innerHTML =
-    "";
-
-
-  map.style.gridTemplateColumns =
-    `repeat(${state.cols}, 1fr)`;
-
-
-  for (
-    let i = 1;
-    i <= state.totalZones;
-    i++
-  ) {
-
-    const zoneId =
-      `Z-${String(i).padStart(2, "0")}`;
-
-
-    const zone =
-      document.createElement(
-        "button"
-      );
-
-
-    zone.className =
-      "zone";
-
-
-    if (
-      liveZoneData.has(
-        zoneId
-      )
-    ) {
-
-      zone.classList.add(
-        "sampled"
-      );
-
-    }
-
-
-    const prescription =
-      prescriptions.find(
-        item =>
-          item.zone === zoneId
-      );
-
-
-    if (
-      prescription &&
-      prescription.status ===
-        "Completed"
-    ) {
-
-      zone.classList.remove(
-        "sampled"
-      );
-
-
-      zone.classList.add(
-        "done"
-      );
-
-    }
-
-
-    if (
-      state.currentZone === i
-    ) {
-
-      zone.classList.add(
-        "current"
-      );
-
-    }
-
-
-    zone.textContent =
-      zoneId;
-
-
-    zone.onclick =
-      () =>
-        selectZone(i);
-
-
-    map.appendChild(
-      zone
-    );
-
-  }
-
-}
-
-
-
-function selectZone(i) {
-
-  state.currentZone =
-    i;
-
-
-  const name =
-    `Z-${String(i).padStart(2, "0")}`;
+    `${Math.max(
+      0,
+      state.totalZones -
+      state.completed
+    )} remaining`;
 
 
   document.getElementById(
-    "currentZone"
+    "remainingTime"
   ).textContent =
-    name;
+    formatEta(
+      data.etaSeconds
+    );
 
+
+  document.getElementById(
+    "missionStatus"
+  ).textContent =
+    data.roverStatus;
+
+
+  document.getElementById(
+    "overviewState"
+  ).textContent =
+    "Live";
+
+}
+
+
+/* =========================================================
+   CURRENT POSITION PANEL
+========================================================= */
+
+function updateCurrentZoneInfo(
+  data
+) {
 
   document.getElementById(
     "zoneTitle"
   ).textContent =
-    name;
+    data.zone;
+
+
+  document.getElementById(
+    "zoneGps"
+  ).textContent =
+    `${data.latitude.toFixed(6)}° N, ${data.longitude.toFixed(6)}° E`;
+
+
+  document.getElementById(
+    "zonePh"
+  ).textContent =
+    data.ph.toFixed(2);
+
+
+  document.getElementById(
+    "zoneMoisture"
+  ).textContent =
+    `${data.moisture.toFixed(1)}%`;
+
+
+  document.getElementById(
+    "zoneTemperature"
+  ).textContent =
+    `${data.temperature.toFixed(1)} °C`;
+
+
+  document.getElementById(
+    "zoneHumidity"
+  ).textContent =
+    `${data.humidity.toFixed(1)}%`;
+
+
+  document.getElementById(
+    "zoneSampleStatus"
+  ).textContent =
+    "Live";
+
+
+  document.getElementById(
+    "zoneSampleStatus"
+  ).className =
+    "badge green";
 
 
   document.getElementById(
     "controlZone"
   ).textContent =
-    name;
+    data.zone;
 
 
-  const sample =
-    liveZoneData.get(
-      name
-    );
-
-
-  if (sample) {
-
-    document.getElementById(
-      "zoneN"
-    ).textContent =
-      `${sample.n} mg/kg`;
-
-
-    document.getElementById(
-      "zoneP"
-    ).textContent =
-      `${sample.p} mg/kg`;
-
-
-    document.getElementById(
-      "zoneK"
-    ).textContent =
-      `${sample.k} mg/kg`;
-
-
-    document.getElementById(
-      "zoneGps"
-    ).textContent =
-      `${sample.latitude.toFixed(6)}° N, ` +
-      `${sample.longitude.toFixed(6)}° E`;
-
-
-    document.getElementById(
-      "zoneSampleStatus"
-    ).textContent =
-      "Sampled";
-
-
-    document.getElementById(
-      "zoneSampleStatus"
-    ).className =
-      "badge green";
-
-  }
-
-  else {
-
-    document.getElementById(
-      "zoneN"
-    ).textContent =
-      "-- mg/kg";
-
-
-    document.getElementById(
-      "zoneP"
-    ).textContent =
-      "-- mg/kg";
-
-
-    document.getElementById(
-      "zoneK"
-    ).textContent =
-      "-- mg/kg";
-
-
-    document.getElementById(
-      "zoneGps"
-    ).textContent =
-      "No measurement";
-
-
-    document.getElementById(
-      "zoneSampleStatus"
-    ).textContent =
-      "No Data";
-
-
-    document.getElementById(
-      "zoneSampleStatus"
-    ).className =
-      "badge blue";
-
-  }
-
-
-  const row =
-    prescriptions.find(
-      item =>
-        item.zone === name
-    );
-
-
-  if (row) {
-
-    document.getElementById(
-      "zoneDose"
-    ).textContent =
-      `N ${row.rn} ml · ` +
-      `P ${row.rp} ml · ` +
-      `K ${row.rk} ml`;
-
-
-    document.getElementById(
-      "sprayTime"
-    ).textContent =
-      `${row.time} sec`;
-
-  }
-
-  else {
-
-    document.getElementById(
-      "zoneDose"
-    ).textContent =
-      "Not calculated";
-
-
-    document.getElementById(
-      "sprayTime"
-    ).textContent =
-      "--";
-
-  }
-
-
-  renderMaps();
+  document.getElementById(
+    "sprinklerZone"
+  ).textContent =
+    data.zone;
 
 }
 
 
+/* =========================================================
+   NPK
+========================================================= */
+
+function updateNpkGauges(
+  data
+) {
+
+  updateGauge(
+    "nGauge",
+    data.nitrogen,
+    100
+  );
+
+
+  updateGauge(
+    "pGauge",
+    data.phosphorus,
+    100
+  );
+
+
+  updateGauge(
+    "kGauge",
+    data.potassium,
+    200
+  );
+
+
+  const statusDot =
+    document.getElementById(
+      "sensorStatusDot"
+    );
+
+
+  statusDot.classList.remove(
+    "disconnected-dot"
+  );
+
+
+  statusDot.classList.add(
+    "connected-dot"
+  );
+
+
+  document.getElementById(
+    "sensorStatusText"
+  ).textContent =
+    "Receiving rover data";
+
+}
+
+
+function updateGauge(
+  id,
+  value,
+  max
+) {
+
+  const element =
+    document.getElementById(
+      id
+    );
+
+
+  element.textContent =
+    Math.round(value);
+
+
+  const gauge =
+    element.closest(
+      ".gauge"
+    );
+
+
+  const percentage =
+    Math.max(
+      0,
+      Math.min(
+        100,
+        (
+          value /
+          max
+        ) * 100
+      )
+    );
+
+
+  gauge.style.setProperty(
+    "--value",
+    percentage
+  );
+
+}
+
 
 /* =========================================================
-   FIELD SETUP
-   ========================================================= */
+   LIVE TELEMETRY
+========================================================= */
+
+function updateLiveTelemetry(
+  data
+) {
+
+  document.getElementById(
+    "telemetryN"
+  ).textContent =
+    Math.round(
+      data.nitrogen
+    );
+
+
+  document.getElementById(
+    "telemetryP"
+  ).textContent =
+    Math.round(
+      data.phosphorus
+    );
+
+
+  document.getElementById(
+    "telemetryK"
+  ).textContent =
+    Math.round(
+      data.potassium
+    );
+
+
+  document.getElementById(
+    "telemetryMoisture"
+  ).textContent =
+    data.moisture.toFixed(1);
+
+
+  document.getElementById(
+    "telemetryTemperature"
+  ).textContent =
+    data.temperature.toFixed(1);
+
+
+  document.getElementById(
+    "telemetryHumidity"
+  ).textContent =
+    data.humidity.toFixed(1);
+
+
+  document.getElementById(
+    "telemetryPh"
+  ).textContent =
+    data.ph.toFixed(2);
+
+
+  document.getElementById(
+    "telemetryGps"
+  ).textContent =
+    `${data.latitude.toFixed(6)}, ${data.longitude.toFixed(6)}`;
+
+
+  document.getElementById(
+    "telemetryGpsStatus"
+  ).textContent =
+    "GPS Fix";
+
+
+  document.getElementById(
+    "telemetryBattery"
+  ).textContent =
+    `${Math.round(data.battery)}%`;
+
+
+  document.getElementById(
+    "telemetrySpeed"
+  ).textContent =
+    `${data.speed.toFixed(1)} m/s`;
+
+
+  document.getElementById(
+    "telemetryZone"
+  ).textContent =
+    data.zone;
+
+
+  document.getElementById(
+    "telemetryProgress"
+  ).textContent =
+    `${Math.round(state.progress)}%`;
+
+
+  document.getElementById(
+    "telemetryPacketNumber"
+  ).textContent =
+    data.packetNumber;
+
+
+  document.getElementById(
+    "telemetryRoverStatus"
+  ).textContent =
+    data.roverStatus;
+
+
+  document.getElementById(
+    "telemetryLastPacket"
+  ).textContent =
+    formatTimestamp(
+      new Date()
+    );
+
+
+  const dot =
+    document.getElementById(
+      "telemetryStatusDot"
+    );
+
+
+  dot.classList.remove(
+    "disconnected-dot"
+  );
+
+
+  dot.classList.add(
+    "connected-dot"
+  );
+
+
+  document.getElementById(
+    "telemetryStatusText"
+  ).textContent =
+    "Receiving";
+
+}
+
+
+/* =========================================================
+   LIVE ROVER PAGE
+========================================================= */
+
+function updateLiveRoverPage(
+  data
+) {
+
+  document.getElementById(
+    "liveRoverGps"
+  ).textContent =
+    `${data.latitude.toFixed(6)}, ${data.longitude.toFixed(6)}`;
+
+
+  document.getElementById(
+    "liveRoverZone"
+  ).textContent =
+    data.zone;
+
+
+  document.getElementById(
+    "liveRoverBattery"
+  ).textContent =
+    `${Math.round(data.battery)}%`;
+
+
+  document.getElementById(
+    "liveRoverSpeed"
+  ).textContent =
+    `${data.speed.toFixed(1)} m/s`;
+
+
+  document.getElementById(
+    "liveRoverStatus"
+  ).textContent =
+    data.roverStatus;
+
+
+  document.getElementById(
+    "liveRoverLastPacket"
+  ).textContent =
+    formatTimestamp(
+      new Date()
+    );
+
+}
+
+
+/* =========================================================
+   TELEMETRY RAW CONSOLE
+========================================================= */
+
+function addTelemetryConsoleLine(
+  packet
+) {
+
+  const consoleBox =
+    document.getElementById(
+      "telemetryConsole"
+    );
+
+
+  const empty =
+    consoleBox.querySelector(
+      ".console-empty"
+    );
+
+
+  if (empty) {
+
+    empty.remove();
+
+  }
+
+
+  const line =
+    document.createElement(
+      "div"
+    );
+
+
+  line.className =
+    "telemetry-console-line";
+
+
+  const time =
+    new Date()
+      .toLocaleTimeString();
+
+
+  const timeElement =
+    document.createElement(
+      "span"
+    );
+
+
+  timeElement.className =
+    "telemetry-console-time";
+
+
+  timeElement.textContent =
+    time;
+
+
+  line.appendChild(
+    timeElement
+  );
+
+
+  line.appendChild(
+    document.createTextNode(
+      packet
+    )
+  );
+
+
+  consoleBox.appendChild(
+    line
+  );
+
+
+  while (
+    consoleBox.children.length >
+    200
+  ) {
+
+    consoleBox.removeChild(
+      consoleBox.firstChild
+    );
+
+  }
+
+
+  consoleBox.scrollTop =
+    consoleBox.scrollHeight;
+
+}
+
 
 document.getElementById(
-  "generateGrid"
+  "clearTelemetryConsole"
 ).onclick =
   () => {
 
-    const rows =
-      Number(
-        document.getElementById(
-          "fieldRows"
-        ).value
+    document.getElementById(
+      "telemetryConsole"
+    ).innerHTML =
+      `
+        <div class="console-empty">
+          Waiting for rover packets...
+        </div>
+      `;
+
+  };
+
+
+/* =========================================================
+   DATA AGE
+========================================================= */
+
+function updateTimestampDisplay() {
+
+  document.getElementById(
+    "sensorTimestamp"
+  ).textContent =
+    lastSensorUpdate
+      ? formatTimestamp(
+          lastSensorUpdate
+        )
+      : "No data received";
+
+}
+
+
+function updateDataAges() {
+
+  if (
+    !lastRoverPacketAt
+  ) {
+
+    return;
+
+  }
+
+
+  const age =
+    (
+      Date.now() -
+      lastRoverPacketAt.getTime()
+    ) / 1000;
+
+
+  document.getElementById(
+    "telemetryDataAge"
+  ).textContent =
+    `${age.toFixed(1)} sec`;
+
+
+  document.getElementById(
+    "sensorDataAge"
+  ).textContent =
+    age < 60
+      ? `${Math.floor(age)} sec ago`
+      : `${Math.floor(age / 60)} min ago`;
+
+}
+
+
+setInterval(
+  updateDataAges,
+  500
+);
+
+
+/* =========================================================
+   ROVER ONLINE STATUS
+========================================================= */
+
+function setRoverOnline(
+  online
+) {
+
+  const dot =
+    document.getElementById(
+      "roverStatusDot"
+    );
+
+
+  const text =
+    document.getElementById(
+      "roverStatusText"
+    );
+
+
+  const side =
+    document.getElementById(
+      "sideRoverStatus"
+    );
+
+
+  if (online) {
+
+    dot.classList.remove(
+      "disconnected-dot"
+    );
+
+
+    dot.classList.add(
+      "connected-dot"
+    );
+
+
+    text.textContent =
+      "Connected";
+
+
+    side.textContent =
+      "Connected";
+
+
+    side.className =
+      "ok";
+
+  }
+
+  else {
+
+    dot.classList.remove(
+      "connected-dot"
+    );
+
+
+    dot.classList.add(
+      "disconnected-dot"
+    );
+
+
+    text.textContent =
+      "No Signal";
+
+
+    side.textContent =
+      "No Signal";
+
+
+    side.className =
+      "";
+
+  }
+
+}
+
+
+setInterval(
+  () => {
+
+    if (
+      !lastRoverPacketAt
+    ) {
+
+      return;
+
+    }
+
+
+    const age =
+      Date.now() -
+      lastRoverPacketAt.getTime();
+
+
+    if (
+      age > 5000
+    ) {
+
+      setRoverOnline(
+        false
       );
 
 
-    const cols =
-      Number(
+      document.getElementById(
+        "telemetryStatusText"
+      ).textContent =
+        "Telemetry Lost";
+
+
+      const dot =
         document.getElementById(
-          "fieldCols"
-        ).value
+          "telemetryStatusDot"
+        );
+
+
+      dot.classList.remove(
+        "connected-dot"
       );
 
 
-    state.rows =
-      rows;
+      dot.classList.add(
+        "disconnected-dot"
+      );
+
+    }
+
+  },
+  1000
+);
 
 
-    state.cols =
-      cols;
+/* =========================================================
+   CAMERA
+========================================================= */
+
+function setCameraStream(
+  url
+) {
+
+  cameraStreamUrl =
+    url;
 
 
-    state.totalZones =
-      rows * cols;
+  const smallCamera =
+    document.getElementById(
+      "roverCamera"
+    );
+
+
+  const largeCamera =
+    document.getElementById(
+      "largeRoverCamera"
+    );
+
+
+  if (!url) {
+
+    setCameraOffline();
+
+    return;
+
+  }
+
+
+  smallCamera.src =
+    url;
+
+
+  largeCamera.src =
+    url;
+
+
+  smallCamera.style.display =
+    "block";
+
+
+  largeCamera.style.display =
+    "block";
+
+
+  document.getElementById(
+    "cameraPlaceholder"
+  ).style.display =
+    "none";
+
+
+  document.getElementById(
+    "largeCameraPlaceholder"
+  ).style.display =
+    "none";
+
+
+  document.getElementById(
+    "cameraStatusText"
+  ).textContent =
+    "Live";
+
+
+  document.getElementById(
+    "cameraConnection"
+  ).textContent =
+    "Connected";
+
+
+  document.getElementById(
+    "cameraStreamStatus"
+  ).textContent =
+    "Streaming";
+
+
+  document.getElementById(
+    "cameraLiveLabel"
+  ).textContent =
+    "● LIVE";
+
+
+  document.getElementById(
+    "largeCameraStatus"
+  ).textContent =
+    "Live";
+
+
+  const dot =
+    document.getElementById(
+      "cameraStatusDot"
+    );
+
+
+  dot.classList.remove(
+    "disconnected-dot"
+  );
+
+
+  dot.classList.add(
+    "connected-dot"
+  );
+
+}
+
+
+function setCameraOffline() {
+
+  document.getElementById(
+    "roverCamera"
+  ).style.display =
+    "none";
+
+
+  document.getElementById(
+    "largeRoverCamera"
+  ).style.display =
+    "none";
+
+
+  document.getElementById(
+    "cameraPlaceholder"
+  ).style.display =
+    "flex";
+
+
+  document.getElementById(
+    "largeCameraPlaceholder"
+  ).style.display =
+    "flex";
+
+
+  document.getElementById(
+    "cameraStatusText"
+  ).textContent =
+    "Offline";
+
+
+  document.getElementById(
+    "cameraConnection"
+  ).textContent =
+    "Disconnected";
+
+
+  document.getElementById(
+    "cameraStreamStatus"
+  ).textContent =
+    "Waiting";
+
+
+  document.getElementById(
+    "cameraLiveLabel"
+  ).textContent =
+    "● OFFLINE";
+
+
+  document.getElementById(
+    "largeCameraStatus"
+  ).textContent =
+    "Offline";
+
+
+  const dot =
+    document.getElementById(
+      "cameraStatusDot"
+    );
+
+
+  dot.classList.remove(
+    "connected-dot"
+  );
+
+
+  dot.classList.add(
+    "disconnected-dot"
+  );
+
+}
+
+
+/* =========================================================
+   SENSOR HISTORY
+========================================================= */
+
+function saveTelemetrySample(
+  data
+) {
+
+  const sample = {
+
+    timestamp:
+      new Date().toISOString(),
+
+    zone:
+      data.zone,
+
+    nitrogen:
+      data.nitrogen,
+
+    phosphorus:
+      data.phosphorus,
+
+    potassium:
+      data.potassium,
+
+    moisture:
+      data.moisture,
+
+    temperature:
+      data.temperature,
+
+    humidity:
+      data.humidity,
+
+    ph:
+      data.ph,
+
+    latitude:
+      data.latitude,
+
+    longitude:
+      data.longitude
+
+  };
+
+
+  sensorRows.unshift(
+    sample
+  );
+
+
+  if (
+    sensorRows.length >
+    5000
+  ) {
+
+    sensorRows =
+      sensorRows.slice(
+        0,
+        5000
+      );
+
+  }
+
+
+  localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify(
+      sensorRows
+    )
+  );
+
+
+  populateZoneFilter();
+
+  renderSensorHistory();
+
+
+  document.getElementById(
+    "historySampleCount"
+  ).textContent =
+    sensorRows.length;
+
+}
+
+
+function renderSensorHistory(
+  rows = sensorRows
+) {
+
+  const tbody =
+    document.getElementById(
+      "sensorHistory"
+    );
+
+
+  if (
+    !rows.length
+  ) {
+
+    tbody.innerHTML =
+      `
+      <tr>
+        <td colspan="10">
+          No sensor data available.
+        </td>
+      </tr>
+      `;
 
 
     document.getElementById(
-      "historyMissionZones"
+      "historySummary"
     ).textContent =
-      state.totalZones;
+      "No stored samples";
 
 
-    updateMissionUI();
+    return;
 
-    renderMaps();
-
-    renderRealHeatmaps();
+  }
 
 
-    toast(
-      `Generated ${rows} × ${cols} field grid`
+  tbody.innerHTML =
+    rows
+      .map(
+        sample =>
+          `
+          <tr>
+            <td>
+              ${formatTimestamp(sample.timestamp)}
+            </td>
+
+            <td>
+              ${sample.zone}
+            </td>
+
+            <td>
+              ${sample.nitrogen}
+            </td>
+
+            <td>
+              ${sample.phosphorus}
+            </td>
+
+            <td>
+              ${sample.potassium}
+            </td>
+
+            <td>
+              ${sample.moisture}%
+            </td>
+
+            <td>
+              ${sample.temperature} °C
+            </td>
+
+            <td>
+              ${sample.humidity}%
+            </td>
+
+            <td>
+              ${sample.ph}
+            </td>
+
+            <td>
+              <button
+                class="btn small history-view"
+                data-time="${sample.timestamp}"
+              >
+                View
+              </button>
+            </td>
+          </tr>
+          `
+      )
+      .join("");
+
+
+  document.getElementById(
+    "historySummary"
+  ).textContent =
+    `Showing ${rows.length} of ${sensorRows.length} samples`;
+
+
+  document
+    .querySelectorAll(
+      ".history-view"
+    )
+    .forEach(
+      button => {
+
+        button.onclick =
+          () =>
+            viewHistorySample(
+              button.dataset.time
+            );
+
+      }
     );
 
-  };
+}
 
+
+function viewHistorySample(
+  timestamp
+) {
+
+  const sample =
+    sensorRows.find(
+      row =>
+        row.timestamp ===
+        timestamp
+    );
+
+
+  if (!sample)
+    return;
+
+
+  navigate(
+    "telemetry"
+  );
+
+
+  document.getElementById(
+    "telemetryN"
+  ).textContent =
+    sample.nitrogen;
+
+
+  document.getElementById(
+    "telemetryP"
+  ).textContent =
+    sample.phosphorus;
+
+
+  document.getElementById(
+    "telemetryK"
+  ).textContent =
+    sample.potassium;
+
+
+  document.getElementById(
+    "telemetryMoisture"
+  ).textContent =
+    sample.moisture;
+
+
+  document.getElementById(
+    "telemetryTemperature"
+  ).textContent =
+    sample.temperature;
+
+
+  document.getElementById(
+    "telemetryHumidity"
+  ).textContent =
+    sample.humidity;
+
+
+  document.getElementById(
+    "telemetryPh"
+  ).textContent =
+    sample.ph;
+
+
+  document.getElementById(
+    "telemetryGps"
+  ).textContent =
+    `${sample.latitude}, ${sample.longitude}`;
+
+
+  document.getElementById(
+    "telemetryLastPacket"
+  ).textContent =
+    formatTimestamp(
+      sample.timestamp
+    );
+
+
+  document.getElementById(
+    "telemetryDataAge"
+  ).textContent =
+    "Historical";
+
+
+  toast(
+    `Viewing ${sample.zone} historical sample`
+  );
+
+}
+
+
+function populateZoneFilter() {
+
+  const select =
+    document.getElementById(
+      "historyZone"
+    );
+
+
+  const zones =
+    [
+      ...new Set(
+        sensorRows.map(
+          row => row.zone
+        )
+      )
+    ].sort();
+
+
+  select.innerHTML =
+    `
+      <option value="all">
+        All zones
+      </option>
+    ` +
+    zones
+      .map(
+        zone =>
+          `
+            <option value="${zone}">
+              ${zone}
+            </option>
+          `
+      )
+      .join("");
+
+}
+
+
+function filterHistory() {
+
+  const from =
+    document.getElementById(
+      "historyFrom"
+    ).value;
+
+
+  const to =
+    document.getElementById(
+      "historyTo"
+    ).value;
+
+
+  const zone =
+    document.getElementById(
+      "historyZone"
+    ).value;
+
+
+  const filtered =
+    sensorRows.filter(
+      row => {
+
+        const date =
+          new Date(
+            row.timestamp
+          );
+
+
+        const afterFrom =
+          !from ||
+          date >=
+            new Date(
+              `${from}T00:00:00`
+            );
+
+
+        const beforeTo =
+          !to ||
+          date <=
+            new Date(
+              `${to}T23:59:59`
+            );
+
+
+        const zoneMatch =
+          zone === "all" ||
+          row.zone === zone;
+
+
+        return (
+          afterFrom &&
+          beforeTo &&
+          zoneMatch
+        );
+
+      }
+    );
+
+
+  renderSensorHistory(
+    filtered
+  );
+
+}
 
 
 document.getElementById(
-  "toggleGrid"
+  "filterHistory"
+).onclick =
+  filterHistory;
+
+
+document.getElementById(
+  "resetHistoryFilter"
 ).onclick =
   () => {
 
     document.getElementById(
-      "fieldMap"
-    ).classList.toggle(
-      "hide-labels"
-    );
+      "historyFrom"
+    ).value =
+      "";
+
+
+    document.getElementById(
+      "historyTo"
+    ).value =
+      "";
+
+
+    document.getElementById(
+      "historyZone"
+    ).value =
+      "all";
+
+
+    renderSensorHistory();
 
   };
 
+
+function exportHistoryCsv() {
+
+  const header =
+    [
+      "Timestamp",
+      "Zone",
+      "Nitrogen",
+      "Phosphorus",
+      "Potassium",
+      "Moisture",
+      "Temperature",
+      "Humidity",
+      "pH",
+      "Latitude",
+      "Longitude"
+    ];
+
+
+  const rows =
+    sensorRows.map(
+      row =>
+        [
+          row.timestamp,
+          row.zone,
+
+          row.nitrogen,
+          row.phosphorus,
+          row.potassium,
+
+          row.moisture,
+          row.temperature,
+          row.humidity,
+
+          row.ph,
+
+          row.latitude,
+          row.longitude
+        ]
+    );
+
+
+  const csv =
+    [
+      header,
+      ...rows
+    ]
+      .map(
+        row =>
+          row.join(",")
+      )
+      .join("\n");
+
+
+  const blob =
+    new Blob(
+      [csv],
+      {
+        type:
+          "text/csv"
+      }
+    );
+
+
+  const link =
+    document.createElement(
+      "a"
+    );
+
+
+  link.href =
+    URL.createObjectURL(
+      blob
+    );
+
+
+  link.download =
+    "agrirover-telemetry.csv";
+
+
+  link.click();
+
+
+  URL.revokeObjectURL(
+    link.href
+  );
+
+}
 
 
 document.getElementById(
-  "resetMap"
+  "exportHistoryCsv"
 ).onclick =
-  () => {
-
-    renderMaps();
-
-  };
-
+  exportHistoryCsv;
 
 
 /* =========================================================
-   REAL NUTRIENT HEATMAP
-   ========================================================= */
-
-/*
-  TEMPORARY DEMONSTRATION THRESHOLDS.
-
-  These are GUI thresholds only.
-
-  Replace them later with the actual
-  agronomic thresholds approved for
-  your selected crop/soil.
-*/
+   HEATMAP
+========================================================= */
 
 function getHeatmapColor(
   nutrient,
@@ -2048,8 +2707,7 @@ function getHeatmapColor(
 
   if (
     value === undefined ||
-    value === null ||
-    Number.isNaN(value)
+    value === null
   ) {
 
     return "#263544";
@@ -2057,76 +2715,66 @@ function getHeatmapColor(
   }
 
 
+  const limits = {
+
+    n:
+      [20, 35, 50, 70],
+
+    p:
+      [10, 18, 30, 45],
+
+    k:
+      [70, 100, 150, 200]
+
+  };
+
+
+  const range =
+    limits[nutrient];
+
+
   if (
-    nutrient === "n"
+    value < range[0]
   ) {
 
-    if (value < 20)
-      return "#2366dc";
-
-    if (value < 35)
-      return "#27a8d8";
-
-    if (value < 50)
-      return "#45c96b";
-
-    if (value < 70)
-      return "#efd83a";
-
-    return "#ef4d3f";
+    return "#2366dc";
 
   }
 
 
   if (
-    nutrient === "p"
+    value < range[1]
   ) {
 
-    if (value < 10)
-      return "#2366dc";
-
-    if (value < 18)
-      return "#27a8d8";
-
-    if (value < 30)
-      return "#45c96b";
-
-    if (value < 45)
-      return "#efd83a";
-
-    return "#ef4d3f";
+    return "#27a8d8";
 
   }
 
 
   if (
-    nutrient === "k"
+    value < range[2]
   ) {
 
-    if (value < 70)
-      return "#2366dc";
-
-    if (value < 100)
-      return "#27a8d8";
-
-    if (value < 150)
-      return "#45c96b";
-
-    if (value < 200)
-      return "#efd83a";
-
-    return "#ef4d3f";
+    return "#45c96b";
 
   }
 
 
-  return "#263544";
+  if (
+    value < range[3]
+  ) {
+
+    return "#efd83a";
+
+  }
+
+
+  return "#ef4d3f";
 
 }
 
 
-
-function renderRealHeatmap(
+function renderHeatmap(
   containerId
 ) {
 
@@ -2145,7 +2793,7 @@ function renderRealHeatmap(
 
 
   container.style.gridTemplateColumns =
-    `repeat(${state.cols}, 1fr)`;
+    `repeat(${state.cols},1fr)`;
 
 
   for (
@@ -2186,7 +2834,7 @@ function renderRealHeatmap(
 
 
       cell.title =
-        `${zone}: No measurement received`;
+        `${zone}: No data`;
 
     }
 
@@ -2205,22 +2853,8 @@ function renderRealHeatmap(
         );
 
 
-      const nutrientName =
-        {
-          n: "Nitrogen",
-          p: "Phosphorus",
-          k: "Potassium"
-        }[
-          selectedHeatmapNutrient
-        ];
-
-
       cell.title =
-        `${zone}\n` +
-        `${nutrientName}: ${value} mg/kg\n` +
-        `Measured: ${formatTimestamp(
-          measurement.timestamp
-        )}`;
+        `${zone}: ${selectedHeatmapNutrient.toUpperCase()} = ${value}`;
 
     }
 
@@ -2234,721 +2868,672 @@ function renderRealHeatmap(
 }
 
 
-
 function renderRealHeatmaps() {
 
-  renderRealHeatmap(
+  renderHeatmap(
     "heatmap"
   );
 
 
-  renderRealHeatmap(
+  renderHeatmap(
     "largeHeatmap"
   );
 
 }
 
 
-
 document.getElementById(
   "heatmapType"
-).addEventListener(
-  "change",
+).onchange =
   event => {
 
     selectedHeatmapNutrient =
       event.target.value;
 
 
+    document.getElementById(
+      "largeHeatmapType"
+    ).value =
+      event.target.value;
+
+
     renderRealHeatmaps();
 
-  }
-);
+  };
 
+
+document.getElementById(
+  "largeHeatmapType"
+).onchange =
+  event => {
+
+    selectedHeatmapNutrient =
+      event.target.value;
+
+
+    document.getElementById(
+      "heatmapType"
+    ).value =
+      event.target.value;
+
+
+    renderRealHeatmaps();
+
+  };
 
 
 /* =========================================================
-   SENSOR HISTORY
-   ========================================================= */
+   CROP RECOMMENDATION
+========================================================= */
 
-function saveSensorRows() {
+const cropProfiles =
+  [
 
-  localStorage.setItem(
-    "agriroverRealSensorHistoryV1",
-    JSON.stringify(
-      sensorRows
-    )
-  );
-
-}
-
-
-
-function saveLiveRoverSample(
-  data,
-  timestamp
-) {
-
-  const sample =
     {
+      name: "Rice",
+      emoji: "🌾",
+      base: 82
+    },
 
-      timestamp:
-        timestamp.toISOString(),
+    {
+      name: "Maize",
+      emoji: "🌽",
+      base: 75
+    },
 
-      zone:
-        data.zone,
+    {
+      name: "Wheat",
+      emoji: "🌿",
+      base: 65
+    },
 
-      n:
-        data.nitrogen,
+    {
+      name: "Mustard",
+      emoji: "🌼",
+      base: 55
+    }
 
-      p:
-        data.phosphorus,
-
-      k:
-        data.potassium,
-
-      status:
-        "Valid"
-
-    };
-
-
-  sensorRows.unshift(
-    sample
-  );
-
-
-  /*
-    Limit browser history
-    to 5000 measurements.
-  */
-
-  if (
-    sensorRows.length > 5000
-  ) {
-
-    sensorRows =
-      sensorRows.slice(
-        0,
-        5000
-      );
-
-  }
+  ];
 
 
-  saveSensorRows();
-
-  populateZoneFilter();
-
-  renderSensorHistory();
-
-}
-
-
-
-function statusBadge(status) {
-
-  return (
-    status === "Valid"
-      ? "green"
-      : "amber"
-  );
-
-}
-
-
-
-function renderSensorHistory(
-  rows = sensorRows
+function updateRecommendationInputs(
+  data
 ) {
 
-  const body =
-    document.getElementById(
-      "sensorHistory"
+  document.getElementById(
+    "recN"
+  ).value =
+    data.nitrogen;
+
+
+  document.getElementById(
+    "recP"
+  ).value =
+    data.phosphorus;
+
+
+  document.getElementById(
+    "recK"
+  ).value =
+    data.potassium;
+
+
+  document.getElementById(
+    "recMoisture"
+  ).value =
+    data.moisture;
+
+
+  document.getElementById(
+    "recTemp"
+  ).value =
+    data.temperature;
+
+
+  document.getElementById(
+    "recHumidity"
+  ).value =
+    data.humidity;
+
+
+  document.getElementById(
+    "recPh"
+  ).value =
+    data.ph;
+
+}
+
+
+function runCropRecommendation() {
+
+  const n =
+    Number(
+      document.getElementById(
+        "recN"
+      ).value
     );
 
 
-  if (!body)
-    return;
-
-
-  if (!rows.length) {
-
-    body.innerHTML =
-      `
-      <tr>
-        <td
-          colspan="7"
-          class="empty-state"
-        >
-          No real rover samples stored yet.
-        </td>
-      </tr>
-      `;
-
-  }
-
-  else {
-
-    body.innerHTML =
-      rows
-        .map(
-          sample =>
-            `
-            <tr>
-
-              <td>
-                ${formatTimestamp(sample.timestamp)}
-              </td>
-
-              <td>
-                ${sample.zone}
-              </td>
-
-              <td>
-                ${sample.n} mg/kg
-              </td>
-
-              <td>
-                ${sample.p} mg/kg
-              </td>
-
-              <td>
-                ${sample.k} mg/kg
-              </td>
-
-              <td>
-
-                <span
-                  class="badge ${statusBadge(sample.status)}"
-                >
-                  ${sample.status}
-                </span>
-
-              </td>
-
-              <td>
-
-                <button
-                  class="btn small view-sample"
-                  data-time="${sample.timestamp}"
-                >
-                  View
-                </button>
-
-              </td>
-
-            </tr>
-            `
-        )
-        .join("");
-
-  }
-
-
-  const summary =
-    document.getElementById(
-      "historySummary"
+  const p =
+    Number(
+      document.getElementById(
+        "recP"
+      ).value
     );
 
 
-  if (summary) {
+  const moisture =
+    Number(
+      document.getElementById(
+        "recMoisture"
+      ).value
+    );
 
-    summary.textContent =
-      `Showing ${rows.length} of ${sensorRows.length} stored samples`;
 
-  }
+  const temp =
+    Number(
+      document.getElementById(
+        "recTemp"
+      ).value
+    );
 
 
-  document
-    .querySelectorAll(
-      ".view-sample"
-    )
-    .forEach(
-      button => {
+  const ph =
+    Number(
+      document.getElementById(
+        "recPh"
+      ).value
+    );
 
-        button.onclick =
-          () =>
-            viewHistoricalSample(
-              button.dataset.time
+
+  const results =
+    cropProfiles
+      .map(
+        crop => {
+
+          let score =
+            crop.base;
+
+
+          if (
+            crop.name === "Rice"
+          ) {
+
+            score +=
+              moisture >= 60
+                ? 8
+                : -10;
+
+
+            score +=
+              temp >= 25
+                ? 4
+                : -4;
+
+          }
+
+
+          if (
+            crop.name === "Maize"
+          ) {
+
+            score +=
+              n >= 35
+                ? 5
+                : -5;
+
+
+            score +=
+              moisture >= 45 &&
+              moisture <= 70
+                ? 5
+                : -4;
+
+          }
+
+
+          if (
+            crop.name === "Wheat"
+          ) {
+
+            score +=
+              temp < 25
+                ? 8
+                : -7;
+
+          }
+
+
+          if (
+            ph < 5.5 ||
+            ph > 7.5
+          ) {
+
+            score -= 8;
+
+          }
+
+
+          if (
+            p < 15
+          ) {
+
+            score -= 4;
+
+          }
+
+
+          score =
+            Math.max(
+              10,
+              Math.min(
+                98,
+                Math.round(score)
+              )
             );
 
-      }
-    );
 
-}
+          return {
+            ...crop,
+            score
+          };
 
-
-
-function populateZoneFilter() {
-
-  const select =
-    document.getElementById(
-      "historyZone"
-    );
-
-
-  if (!select)
-    return;
-
-
-  const selected =
-    select.value;
-
-
-  const zones =
-    [
-      ...new Set(
-        sensorRows.map(
-          row => row.zone
-        )
+        }
       )
-    ].sort();
+      .sort(
+        (a, b) =>
+          b.score -
+          a.score
+      );
 
 
-  select.innerHTML =
-    '<option value="all">All zones</option>' +
-    zones
+  document.getElementById(
+    "cropResults"
+  ).innerHTML =
+    results
       .map(
-        zone =>
-          `<option value="${zone}">${zone}</option>`
+        (crop, index) =>
+          `
+          <article class="result-card">
+
+            <header>
+
+              <strong>
+                ${crop.emoji}
+                ${crop.name}
+              </strong>
+
+              <span class="badge ${index === 0 ? "green" : "blue"}">
+                ${crop.score}%
+              </span>
+
+            </header>
+
+            <div class="progress">
+
+              <i
+                style="width:${crop.score}%"
+              ></i>
+
+            </div>
+
+          </article>
+          `
       )
       .join("");
 
 
-  if (
-    zones.includes(
-      selected
-    )
-  ) {
-
-    select.value =
-      selected;
-
-  }
-
-}
-
-
-
-function updateTimestampDisplay() {
-
-  const stamp =
-    document.getElementById(
-      "sensorTimestamp"
-    );
-
-
-  if (!stamp)
-    return;
-
-
-  stamp.textContent =
-    lastSensorUpdate
-      ? formatTimestamp(
-          lastSensorUpdate
-        )
-      : "No data received";
-
-}
-
-
-
-function updateDataAge() {
-
-  const age =
-    document.getElementById(
-      "sensorDataAge"
-    );
-
-
-  if (!age)
-    return;
-
-
-  if (!lastSensorUpdate) {
-
-    age.textContent =
-      "No data";
-
-    return;
-
-  }
-
-
-  const seconds =
-    Math.max(
-      0,
-      Math.floor(
-        (
-          Date.now() -
-          lastSensorUpdate.getTime()
-        ) / 1000
-      )
-    );
-
-
-  if (seconds < 60) {
-
-    age.textContent =
-      `${seconds} sec ago`;
-
-  }
-
-  else if (
-    seconds < 3600
-  ) {
-
-    age.textContent =
-      `${Math.floor(seconds / 60)} min ago`;
-
-  }
-
-  else if (
-    seconds < 86400
-  ) {
-
-    age.textContent =
-      `${Math.floor(seconds / 3600)} hr ago`;
-
-  }
-
-  else {
-
-    age.textContent =
-      `${Math.floor(seconds / 86400)} day(s) ago`;
-
-  }
-
-}
-
-
-
-function viewHistoricalSample(
-  timestamp
-) {
-
-  const sample =
-    sensorRows.find(
-      row =>
-        row.timestamp ===
-        timestamp
-    );
-
-
-  if (!sample) {
-
-    toast(
-      "Historical sample not found"
-    );
-
-    return;
-
-  }
-
-
-  updateGauge(
-    "nGauge",
-    sample.n,
-    100
-  );
-
-
-  updateGauge(
-    "pGauge",
-    sample.p,
-    100
-  );
-
-
-  updateGauge(
-    "kGauge",
-    sample.k,
-    200
-  );
+  document.getElementById(
+    "bestCrop"
+  ).textContent =
+    results[0].name;
 
 
   document.getElementById(
-    "sensorTimestamp"
+    "cropScore"
   ).textContent =
-    formatTimestamp(
-      sample.timestamp
-    );
+    `${results[0].score}%`;
 
 
   document.getElementById(
-    "sensorDataAge"
+    "cropReason"
   ).textContent =
-    "Historical record";
-
-
-  toast(
-    `Viewing ${sample.zone} historical measurement`
-  );
+    "Recommendation generated from current soil and environmental measurements.";
 
 }
 
 
-
-function applyHistoryFilter() {
-
-  const from =
-    document.getElementById(
-      "historyFrom"
-    ).value;
+document.getElementById(
+  "runCropModel"
+).onclick =
+  runCropRecommendation;
 
 
-  const to =
-    document.getElementById(
-      "historyTo"
-    ).value;
+document.getElementById(
+  "generateRecommendation"
+).onclick =
+  () => {
+
+    navigate(
+      "crop"
+    );
 
 
-  const zone =
-    document.getElementById(
-      "historyZone"
-    ).value;
+    runCropRecommendation();
+
+  };
 
 
-  const filtered =
-    sensorRows.filter(
-      sample => {
+/* =========================================================
+   PRESCRIPTION
+========================================================= */
 
-        const time =
-          new Date(
-            sample.timestamp
-          ).getTime();
+function buildPrescriptions() {
 
-
-        const after =
-          !from ||
-          time >=
-            new Date(
-              `${from}T00:00:00`
-            ).getTime();
+  prescriptions = [];
 
 
-        const before =
-          !to ||
-          time <=
-            new Date(
-              `${to}T23:59:59`
-            ).getTime();
+  for (
+    let i = 1;
+    i <= state.totalZones;
+    i++
+  ) {
+
+    const zone =
+      `Z-${String(i).padStart(2, "0")}`;
 
 
-        const zoneMatch =
-          zone === "all" ||
-          sample.zone === zone;
+    const data =
+      liveZoneData.get(
+        zone
+      );
 
 
-        return (
-          after &&
-          before &&
-          zoneMatch
-        );
+    if (!data) {
+
+      continue;
+
+    }
+
+
+    const targetN =
+      45;
+
+
+    const targetP =
+      25;
+
+
+    const targetK =
+      120;
+
+
+    prescriptions.push(
+      {
+
+        zone,
+
+        n:
+          data.n,
+
+        p:
+          data.p,
+
+        k:
+          data.k,
+
+        rn:
+          Math.max(
+            0,
+            Math.round(
+              targetN -
+              data.n
+            )
+          ),
+
+        rp:
+          Math.max(
+            0,
+            Math.round(
+              targetP -
+              data.p
+            )
+          ),
+
+        rk:
+          Math.max(
+            0,
+            Math.round(
+              targetK -
+              data.k
+            )
+          ),
+
+        time:
+          15,
+
+        status:
+          "Pending"
 
       }
     );
 
-
-  renderSensorHistory(
-    filtered
-  );
-
-}
+  }
 
 
-
-function resetHistoryFilter() {
-
-  document.getElementById(
-    "historyFrom"
-  ).value =
-    "";
-
-
-  document.getElementById(
-    "historyTo"
-  ).value =
-    "";
-
-
-  document.getElementById(
-    "historyZone"
-  ).value =
-    "all";
-
-
-  renderSensorHistory();
+  renderPrescription();
 
 }
 
 
+function renderPrescription() {
 
-function exportHistoryCsv() {
-
-  const header =
-    [
-      "Timestamp",
-      "Zone",
-      "Nitrogen",
-      "Phosphorus",
-      "Potassium",
-      "Status"
-    ];
-
-
-  const rows =
-    sensorRows.map(
-      sample =>
-        [
-          sample.timestamp,
-          sample.zone,
-          sample.n,
-          sample.p,
-          sample.k,
-          sample.status
-        ]
+  const dashboard =
+    document.getElementById(
+      "prescriptionBody"
     );
 
 
-  const csv =
-    [
-      header,
-      ...rows
-    ]
+  const full =
+    document.getElementById(
+      "prescriptionBody2"
+    );
+
+
+  if (
+    prescriptions.length === 0
+  ) {
+
+    dashboard.innerHTML =
+      `
+      <tr>
+        <td colspan="8">
+          Waiting for soil measurements.
+        </td>
+      </tr>
+      `;
+
+
+    full.innerHTML =
+      `
+      <tr>
+        <td colspan="9">
+          Waiting for soil measurements.
+        </td>
+      </tr>
+      `;
+
+
+    return;
+
+  }
+
+
+  dashboard.innerHTML =
+    prescriptions
       .map(
         row =>
-          row.join(",")
+          `
+          <tr>
+            <td>${row.zone}</td>
+            <td>${row.n}</td>
+            <td>${row.p}</td>
+            <td>${row.k}</td>
+            <td>${row.rn} ml</td>
+            <td>${row.rp} ml</td>
+            <td>${row.rk} ml</td>
+            <td>
+              <span class="badge amber">
+                ${row.status}
+              </span>
+            </td>
+          </tr>
+          `
       )
-      .join("\n");
+      .join("");
 
 
-  const blob =
-    new Blob(
-      [csv],
-      {
-        type: "text/csv"
-      }
-    );
-
-
-  const link =
-    document.createElement(
-      "a"
-    );
-
-
-  link.href =
-    URL.createObjectURL(
-      blob
-    );
-
-
-  link.download =
-    "agrirover-real-sensor-history.csv";
-
-
-  link.click();
-
-
-  URL.revokeObjectURL(
-    link.href
-  );
-
-
-  toast(
-    "Sensor history exported"
-  );
+  full.innerHTML =
+    prescriptions
+      .map(
+        row =>
+          `
+          <tr>
+            <td>${row.zone}</td>
+            <td>${row.n}</td>
+            <td>${row.p}</td>
+            <td>${row.k}</td>
+            <td>${row.rn} ml</td>
+            <td>${row.rp} ml</td>
+            <td>${row.rk} ml</td>
+            <td>${row.time} sec</td>
+            <td>
+              <span class="badge amber">
+                ${row.status}
+              </span>
+            </td>
+          </tr>
+          `
+      )
+      .join("");
 
 }
 
 
-
-setInterval(
-  updateDataAge,
-  1000
-);
-
-
-
 document.getElementById(
-  "filterHistory"
+  "approvePrescription"
 ).onclick =
-  applyHistoryFilter;
+  () => {
 
+    buildPrescriptions();
 
-document.getElementById(
-  "resetHistoryFilter"
-).onclick =
-  resetHistoryFilter;
-
-
-document.getElementById(
-  "exportHistoryCsv"
-).onclick =
-  exportHistoryCsv;
-
-
-
-/* =========================================================
-   TAKE SAMPLE
-   ========================================================= */
-
-async function takeSample() {
-
-  const sent =
-    await sendBaseCommand(
-      "ROVER,SAMPLE"
-    );
-
-
-  if (sent) {
 
     toast(
-      "Sample command sent to rover"
+      "Prescription generated"
     );
 
-  }
-
-}
-
+  };
 
 
 document.getElementById(
-  "takeSample"
+  "approvePrescription2"
 ).onclick =
-  takeSample;
+  () => {
+
+    buildPrescriptions();
+
+
+    toast(
+      "Prescription generated"
+    );
+
+  };
 
 
 document.getElementById(
-  "takeSample2"
+  "exportCsv"
 ).onclick =
-  takeSample;
+  () => {
 
+    buildPrescriptions();
+
+
+    const header =
+      [
+        "Zone",
+        "N",
+        "P",
+        "K",
+        "Required N",
+        "Required P",
+        "Required K"
+      ];
+
+
+    const csv =
+      [
+        header,
+
+        ...prescriptions.map(
+          row =>
+            [
+              row.zone,
+              row.n,
+              row.p,
+              row.k,
+              row.rn,
+              row.rp,
+              row.rk
+            ]
+        )
+
+      ]
+        .map(
+          row =>
+            row.join(",")
+        )
+        .join("\n");
+
+
+    const blob =
+      new Blob(
+        [csv],
+        {
+          type:
+            "text/csv"
+        }
+      );
+
+
+    const link =
+      document.createElement(
+        "a"
+      );
+
+
+    link.href =
+      URL.createObjectURL(
+        blob
+      );
+
+
+    link.download =
+      "agrirover-prescription.csv";
+
+
+    link.click();
+
+  };
 
 
 /* =========================================================
-   ROVER MISSION COMMANDS
-   ========================================================= */
+   MISSION COMMANDS
+========================================================= */
 
 document.getElementById(
   "startMission"
 ).onclick =
   async () => {
-
-    if (
-      state.emergency
-    ) {
-
-      toast(
-        "Emergency state must be reset from hardware first"
-      );
-
-      return;
-
-    }
-
 
     const sent =
       await sendBaseCommand(
@@ -2963,15 +3548,9 @@ document.getElementById(
       ).textContent =
         "Starting...";
 
-
-      toast(
-        "Start command sent to rover"
-      );
-
     }
 
   };
-
 
 
 document.getElementById(
@@ -2998,12 +3577,6 @@ document.getElementById(
         ).textContent =
           "Resume";
 
-
-        document.getElementById(
-          "missionStatus"
-        ).textContent =
-          "Pausing...";
-
       }
 
     }
@@ -3027,12 +3600,6 @@ document.getElementById(
         ).textContent =
           "Pause";
 
-
-        document.getElementById(
-          "missionStatus"
-        ).textContent =
-          "Resuming...";
-
       }
 
     }
@@ -3040,29 +3607,40 @@ document.getElementById(
   };
 
 
+async function takeSample() {
+
+  await sendBaseCommand(
+    "ROVER,SAMPLE"
+  );
+
+}
+
+
+document.getElementById(
+  "takeSample"
+).onclick =
+  takeSample;
+
+
+document.getElementById(
+  "takeSample2"
+).onclick =
+  takeSample;
+
 
 /* =========================================================
    EMERGENCY STOP
-   ========================================================= */
+========================================================= */
 
 document.getElementById(
   "emergencyBtn"
 ).onclick =
   async () => {
 
-    /*
-       Send stop to rover.
-    */
-
     await sendBaseCommand(
       "ROVER,ESTOP"
     );
 
-
-    /*
-       Also shut down local
-       fertilizer hardware.
-    */
 
     await sendBaseCommand(
       "FERT,ALL_OFF"
@@ -3071,14 +3649,6 @@ document.getElementById(
 
     state.emergency =
       true;
-
-
-    state.running =
-      false;
-
-
-    state.paused =
-      false;
 
 
     document.getElementById(
@@ -3099,142 +3669,25 @@ document.getElementById(
       "OFF";
 
 
-    setSprayProgress(
-      0
-    );
-
-
     toast(
-      "Emergency stop commands sent"
+      "Emergency stop sent"
     );
 
   };
 
 
-
 /* =========================================================
-   ROVER ACK
-   ========================================================= */
+   MANUAL ROVER
+========================================================= */
 
-function processRoverAck(
-  command
-) {
-
-  const upper =
-    command.toUpperCase();
-
-
-  if (
-    upper.includes(
-      "START"
-    )
-  ) {
-
-    state.running =
-      true;
-
-
-    state.paused =
-      false;
-
-
-    document.getElementById(
-      "missionStatus"
-    ).textContent =
-      "Running";
-
-  }
-
-
-  else if (
-    upper.includes(
-      "PAUSE"
-    )
-  ) {
-
-    state.paused =
-      true;
-
-
-    document.getElementById(
-      "missionStatus"
-    ).textContent =
-      "Paused";
-
-  }
-
-
-  else if (
-    upper.includes(
-      "RESUME"
-    )
-  ) {
-
-    state.paused =
-      false;
-
-
-    document.getElementById(
-      "missionStatus"
-    ).textContent =
-      "Running";
-
-  }
-
-
-  else if (
-    upper.includes(
-      "ESTOP"
-    )
-  ) {
-
-    document.getElementById(
-      "missionStatus"
-    ).textContent =
-      "Emergency Stop";
-
-  }
-
-
-  toast(
-    `Rover confirmed: ${command}`
-  );
-
-
-  addSystemLog(
-    "success",
-    "Rover acknowledgement",
-    command
-  );
-
-}
-
-
-
-/* =========================================================
-   MANUAL ROVER CONTROL
-   ========================================================= */
-
-const manualCommandMap =
+const roverCommandMap =
   {
-
-    Forward:
-      "FWD",
-
-    Backward:
-      "BACK",
-
-    Left:
-      "LEFT",
-
-    Right:
-      "RIGHT",
-
-    Stop:
-      "STOP"
-
+    Forward: "FWD",
+    Backward: "BACK",
+    Left: "LEFT",
+    Right: "RIGHT",
+    Stop: "STOP"
   };
-
 
 
 document
@@ -3247,37 +3700,27 @@ document
       button.onclick =
         async () => {
 
-          const action =
-            manualCommandMap[
+          const speed =
+            document.getElementById(
+              "manualSpeed"
+            ).value;
+
+
+          const command =
+            roverCommandMap[
               button.dataset.command
             ];
 
 
-          const speed =
-            Number(
-              document.getElementById(
-                "manualSpeed"
-              ).value
-            );
-
-
-          let command =
-            `ROVER,${action}`;
-
-
-          if (
-            action !== "STOP"
-          ) {
-
-            command +=
-              `,${speed.toFixed(1)}`;
-
-          }
+          const packet =
+            command === "STOP"
+              ? "ROVER,STOP"
+              : `ROVER,${command},${speed}`;
 
 
           const sent =
             await sendBaseCommand(
-              command
+              packet
             );
 
 
@@ -3286,7 +3729,7 @@ document
             document.getElementById(
               "manualCommand"
             ).textContent =
-              `Command sent: ${command}`;
+              `Sent: ${packet}`;
 
           }
 
@@ -3294,7 +3737,6 @@ document
 
     }
   );
-
 
 
 document.getElementById(
@@ -3310,30 +3752,18 @@ document.getElementById(
   };
 
 
-
 document.getElementById(
   "manualStop"
 ).onclick =
-  async () => {
-
-    await sendBaseCommand(
+  () =>
+    sendBaseCommand(
       "ROVER,STOP"
     );
 
 
-    document.getElementById(
-      "manualCommand"
-    ).textContent =
-      "Emergency motor STOP command sent.";
-
-  };
-
-
-
 /* =========================================================
-   FERTILIZER VALVE CONTROL
-   BASE STATION HARDWARE
-   ========================================================= */
+   FERTILIZER
+========================================================= */
 
 document
   .querySelectorAll(
@@ -3349,40 +3779,21 @@ document
             button.dataset.valve;
 
 
-          const currentlyOpen =
+          const open =
             button.classList.contains(
               "on"
             );
 
 
           const action =
-            currentlyOpen
+            open
               ? "CLOSE"
               : "OPEN";
 
 
-          const sent =
-            await sendBaseCommand(
-              `FERT,${valve},${action}`
-            );
-
-
-          if (sent) {
-
-            toast(
-              `${valve} valve ${action} requested`
-            );
-
-          }
-
-
-          /*
-             IMPORTANT:
-
-             Button does NOT visually change here.
-
-             It waits for ACK from Nano.
-          */
+          await sendBaseCommand(
+            `FERT,${valve},${action}`
+          );
 
         };
 
@@ -3390,33 +3801,22 @@ document
   );
 
 
-
-/* =========================================================
-   PUMP CONTROL
-   ========================================================= */
-
 document.getElementById(
   "startSpray"
 ).onclick =
   async () => {
 
-    const sent =
-      await sendBaseCommand(
-        "FERT,PUMP,ON"
-      );
+    await sendBaseCommand(
+      "FERT,PUMP,ON"
+    );
 
 
-    if (sent) {
-
-      document.getElementById(
-        "pumpStatus"
-      ).textContent =
-        "Starting...";
-
-    }
+    document.getElementById(
+      "pumpStatus"
+    ).textContent =
+      "Starting...";
 
   };
-
 
 
 document.getElementById(
@@ -3424,23 +3824,11 @@ document.getElementById(
 ).onclick =
   async () => {
 
-    const sent =
-      await sendBaseCommand(
-        "FERT,PUMP,OFF"
-      );
-
-
-    if (sent) {
-
-      document.getElementById(
-        "pumpStatus"
-      ).textContent =
-        "Pausing...";
-
-    }
+    await sendBaseCommand(
+      "FERT,PUMP,OFF"
+    );
 
   };
-
 
 
 document.getElementById(
@@ -3448,71 +3836,12 @@ document.getElementById(
 ).onclick =
   async () => {
 
-    const sent =
-      await sendBaseCommand(
-        "FERT,ALL_OFF"
-      );
-
-
-    if (sent) {
-
-      document.getElementById(
-        "pumpStatus"
-      ).textContent =
-        "Stopping...";
-
-    }
+    await sendBaseCommand(
+      "FERT,ALL_OFF"
+    );
 
   };
 
-
-
-function setSprayProgress(
-  value
-) {
-
-  state.sprayProgress =
-    Math.max(
-      0,
-      Math.min(
-        100,
-        Number(value)
-      )
-    );
-
-
-  document.getElementById(
-    "sprayProgress"
-  ).textContent =
-    `${Math.round(state.sprayProgress)}%`;
-
-
-  document.getElementById(
-    "sprayBar"
-  ).style.width =
-    `${state.sprayProgress}%`;
-
-}
-
-
-
-/* =========================================================
-   BASE STATION ACK
-   ========================================================= */
-
-/*
-
-Nano examples:
-
-BASE,GUI,ACK,FERT,N,OPEN
-
-BASE,GUI,ACK,FERT,P,CLOSE
-
-BASE,GUI,ACK,FERT,PUMP,ON
-
-BASE,GUI,ACK,FERT,ALL_OFF
-
-*/
 
 function processBaseAck(
   parts
@@ -3535,7 +3864,32 @@ function processBaseAck(
     parts[2];
 
 
-  /* ALL OFF */
+  if (
+    device === "PUMP"
+  ) {
+
+    const stateText =
+      action === "ON"
+        ? "Running"
+        : "OFF";
+
+
+    document.getElementById(
+      "pumpStatus"
+    ).textContent =
+      stateText;
+
+
+    document.getElementById(
+      "sprinklerPumpState"
+    ).textContent =
+      stateText;
+
+
+    return;
+
+  }
+
 
   if (
     device === "ALL_OFF"
@@ -3559,9 +3913,12 @@ function processBaseAck(
             );
 
 
-          if (label)
+          if (label) {
+
             label.textContent =
               "CLOSED";
+
+          }
 
         }
       );
@@ -3573,38 +3930,10 @@ function processBaseAck(
       "OFF";
 
 
-    setSprayProgress(
-      0
-    );
-
-
-    toast(
-      "Base confirmed fertilizer shutdown"
-    );
-
-
-    return;
-
-  }
-
-
-  /* PUMP */
-
-  if (
-    device === "PUMP"
-  ) {
-
     document.getElementById(
-      "pumpStatus"
+      "sprinklerPumpState"
     ).textContent =
-      action === "ON"
-        ? "Running"
-        : "OFF";
-
-
-    toast(
-      `Base confirmed pump ${action}`
-    );
+      "OFF";
 
 
     return;
@@ -3612,60 +3941,15 @@ function processBaseAck(
   }
 
 
-  /* N / P / K / MAIN */
-
-  updateValveUI(
+  updateValveUi(
     device,
     action === "OPEN"
   );
 
-
-  toast(
-    `Base confirmed ${device} valve ${action}`
-  );
-
 }
 
 
-
-/* =========================================================
-   BASE STATUS PACKETS
-   ========================================================= */
-
-/*
-
-Optional future example:
-
-BASE,GUI,STATUS,FERT,PROGRESS,45
-
-*/
-
-function processBaseStatus(
-  parts
-) {
-
-  if (
-    parts[0] === "FERT" &&
-    parts[1] === "PROGRESS"
-  ) {
-
-    setSprayProgress(
-      Number(
-        parts[2]
-      )
-    );
-
-  }
-
-}
-
-
-
-/* =========================================================
-   UPDATE ALL COPIES OF A VALVE BUTTON
-   ========================================================= */
-
-function updateValveUI(
+function updateValveUi(
   valve,
   open
 ) {
@@ -3690,9 +3974,12 @@ function updateValveUI(
           );
 
 
-          if (label)
+          if (label) {
+
             label.textContent =
               "OPEN";
+
+          }
 
         }
 
@@ -3703,10 +3990,13 @@ function updateValveUI(
           );
 
 
-          if (label)
+          if (label) {
+
             label.textContent =
               "CLOSED";
 
+          }
+
         }
 
       }
@@ -3715,522 +4005,109 @@ function updateValveUI(
 }
 
 
-
-/* =========================================================
-   PRESCRIPTION TABLE
-   ========================================================= */
-
-function renderPrescription() {
-
-  const dashboard =
-    document.getElementById(
-      "prescriptionBody"
-    );
-
-
-  const page =
-    document.getElementById(
-      "prescriptionBody2"
-    );
-
-
-  dashboard.innerHTML =
-    prescriptions
-      .map(
-        row =>
-          `
-          <tr>
-
-            <td>${row.zone}</td>
-
-            <td>${row.n}</td>
-
-            <td>${row.p}</td>
-
-            <td>${row.k}</td>
-
-            <td>${row.rn} ml</td>
-
-            <td>${row.rp} ml</td>
-
-            <td>${row.rk} ml</td>
-
-            <td>
-
-              <span
-                class="badge ${
-                  row.status === "Completed"
-                    ? "green"
-                    : row.status === "Pending"
-                    ? "amber"
-                    : "blue"
-                }"
-              >
-                ${row.status}
-              </span>
-
-            </td>
-
-          </tr>
-          `
-      )
-      .join("");
-
-
-  page.innerHTML =
-    prescriptions
-      .map(
-        row =>
-          `
-          <tr>
-
-            <td>${row.zone}</td>
-
-            <td>${row.n}</td>
-
-            <td>${row.p}</td>
-
-            <td>${row.k}</td>
-
-            <td>${row.rn} ml</td>
-
-            <td>${row.rp} ml</td>
-
-            <td>${row.rk} ml</td>
-
-            <td>${row.time} sec</td>
-
-            <td>
-
-              <span
-                class="badge ${
-                  row.status === "Completed"
-                    ? "green"
-                    : row.status === "Pending"
-                    ? "amber"
-                    : "blue"
-                }"
-              >
-                ${row.status}
-              </span>
-
-            </td>
-
-          </tr>
-          `
-      )
-      .join("");
-
-}
-
-
-
-function approvePrescription() {
-
-  prescriptions
-    .forEach(
-      row => {
-
-        if (
-          row.status === "Pending"
-        ) {
-
-          row.status =
-            "Approved";
-
-        }
-
-      }
-    );
-
-
-  renderPrescription();
-
-
-  toast(
-    "Fertilizer prescription approved"
-  );
-
-}
-
-
-
-document.getElementById(
-  "approvePrescription"
-).onclick =
-  approvePrescription;
-
-
-document.getElementById(
-  "approvePrescription2"
-).onclick =
-  approvePrescription;
-
-
-
-function exportPrescriptionCsv() {
-
-  const header =
-    [
-      "Zone",
-      "N",
-      "P",
-      "K",
-      "Required N",
-      "Required P",
-      "Required K",
-      "Spray Time",
-      "Status"
-    ];
-
-
-  const rows =
-    prescriptions.map(
-      row =>
-        [
-          row.zone,
-          row.n,
-          row.p,
-          row.k,
-          row.rn,
-          row.rp,
-          row.rk,
-          row.time,
-          row.status
-        ]
-    );
-
-
-  const csv =
-    [
-      header,
-      ...rows
-    ]
-      .map(
-        row =>
-          row.join(",")
-      )
-      .join("\n");
-
-
-  const blob =
-    new Blob(
-      [csv],
-      {
-        type: "text/csv"
-      }
-    );
-
-
-  const link =
-    document.createElement(
-      "a"
-    );
-
-
-  link.href =
-    URL.createObjectURL(
-      blob
-    );
-
-
-  link.download =
-    "agrirover-prescription.csv";
-
-
-  link.click();
-
-
-  URL.revokeObjectURL(
-    link.href
-  );
-
-}
-
-
-
-document.getElementById(
-  "exportCsv"
-).onclick =
-  exportPrescriptionCsv;
-
-
-
-/* =========================================================
-   CROP RECOMMENDATION
-   ========================================================= */
-
-/*
-  This is still a DEMONSTRATION scoring model.
-
-  Later replace with your actual trained
-  crop recommendation model / validated
-  agricultural rules.
-*/
-
-const cropProfiles =
-  [
-
-    {
-      name: "Rice",
-      emoji: "🌾",
-      base: 88,
-      reason:
-        "Strong fit for warm, humid and high-moisture conditions."
-    },
-
-    {
-      name: "Maize",
-      emoji: "🌽",
-      base: 80,
-      reason:
-        "Suitable nutrient balance with moderate moisture demand."
-    },
-
-    {
-      name: "Wheat",
-      emoji: "🌿",
-      base: 65,
-      reason:
-        "Possible with lower moisture and cooler seasonal conditions."
-    },
-
-    {
-      name: "Mustard",
-      emoji: "🌼",
-      base: 55,
-      reason:
-        "Requires drier conditions and improved phosphorus."
-    }
-
-  ];
-
-
-
-function runRecommendation() {
-
-  const n =
-    Number(
-      document.getElementById(
-        "recN"
-      ).value
-    );
-
-
-  const p =
-    Number(
-      document.getElementById(
-        "recP"
-      ).value
-    );
-
-
-  const moisture =
-    Number(
-      document.getElementById(
-        "recMoisture"
-      ).value
-    );
-
-
-  const temperature =
-    Number(
-      document.getElementById(
-        "recTemp"
-      ).value
-    );
-
-
-  const scores =
-    cropProfiles
-      .map(
-        crop => {
-
-          let score =
-            crop.base;
-
-
-          if (
-            crop.name === "Rice"
-          ) {
-
-            score +=
-              moisture > 65
-                ? 5
-                : -12;
-
-          }
-
-
-          if (
-            crop.name === "Maize"
-          ) {
-
-            score +=
-              n > 40
-                ? 4
-                : -3;
-
-          }
-
-
-          if (
-            crop.name === "Wheat"
-          ) {
-
-            score +=
-              temperature < 25
-                ? 8
-                : -7;
-
-          }
-
-
-          if (p < 18)
-            score -= 4;
-
-
-          return {
-            ...crop,
-            score:
-              Math.max(
-                20,
-                Math.min(
-                  98,
-                  Math.round(score)
-                )
-              )
-          };
-
-        }
-      )
-      .sort(
-        (a, b) =>
-          b.score -
-          a.score
+function processBaseStatus(
+  parts
+) {
+
+  if (
+    parts[0] === "FERT" &&
+    parts[1] === "PROGRESS"
+  ) {
+
+    const progress =
+      Number(
+        parts[2]
       );
 
 
-  document.getElementById(
-    "cropResults"
-  ).innerHTML =
-    scores
-      .map(
-        (crop, index) =>
-          `
-          <article class="result-card">
-
-            <header>
-
-              <strong>
-                ${crop.emoji}
-                ${index + 1}.
-                ${crop.name}
-              </strong>
-
-              <span
-                class="badge ${
-                  index === 0
-                    ? "green"
-                    : "blue"
-                }"
-              >
-                ${crop.score}% suitable
-              </span>
-
-            </header>
-
-            <p>
-              ${crop.reason}
-            </p>
-
-            <div class="progress">
-
-              <i
-                style="width:${crop.score}%"
-              ></i>
-
-            </div>
-
-          </article>
-          `
-      )
-      .join("");
+    state.sprayProgress =
+      progress;
 
 
-  document.getElementById(
-    "bestCrop"
-  ).textContent =
-    scores[0].name;
+    document.getElementById(
+      "sprayProgress"
+    ).textContent =
+      `${progress}%`;
 
 
-  document.getElementById(
-    "cropScore"
-  ).textContent =
-    `${scores[0].score}%`;
+    document.getElementById(
+      "sprinklerProgress"
+    ).textContent =
+      `${progress}%`;
 
 
-  document.getElementById(
-    "cropReason"
-  ).textContent =
-    scores[0].reason;
+    document.getElementById(
+      "sprayBar"
+    ).style.width =
+      `${progress}%`;
 
-
-  toast(
-    "Crop recommendation generated"
-  );
+  }
 
 }
 
 
+/* =========================================================
+   FIELD SETUP
+========================================================= */
 
 document.getElementById(
-  "runCropModel"
-).onclick =
-  runRecommendation;
-
-
-
-document.getElementById(
-  "generateRecommendation"
+  "generateGrid"
 ).onclick =
   () => {
 
-    navigate(
-      "crop"
+    state.rows =
+      Number(
+        document.getElementById(
+          "fieldRows"
+        ).value
+      );
+
+
+    state.cols =
+      Number(
+        document.getElementById(
+          "fieldCols"
+        ).value
+      );
+
+
+    state.totalZones =
+      state.rows *
+      state.cols;
+
+
+    renderRealHeatmaps();
+
+
+    toast(
+      `Field updated to ${state.rows} × ${state.cols}`
     );
-
-
-    runRecommendation();
 
   };
 
 
+/* =========================================================
+   HISTORY NAVIGATION
+========================================================= */
+
+document.getElementById(
+  "openCurrentHistory"
+).onclick =
+  () =>
+    navigate(
+      "sensor"
+    );
+
 
 /* =========================================================
-   SYSTEM ALERT / EVENT LOG
-   ========================================================= */
+   ALERTS
+========================================================= */
 
-let allAlerts = [];
-
-
-
-function addSystemLog(
+function addAlert(
   type,
   title,
-  description
+  detail
 ) {
-
-  const time =
-    new Date()
-      .toLocaleTimeString(
-        [],
-        {
-          hour: "2-digit",
-          minute: "2-digit"
-        }
-      );
-
 
   const icons =
     {
@@ -4241,23 +4118,29 @@ function addSystemLog(
     };
 
 
-  allAlerts.unshift(
-    [
+  systemAlerts.unshift(
+    {
       type,
-      icons[type] || "ℹ",
+      icon:
+        icons[type] || "ℹ",
+
       title,
-      description,
-      time
-    ]
+      detail,
+
+      time:
+        new Date()
+          .toLocaleTimeString()
+    }
   );
 
 
   if (
-    allAlerts.length > 100
+    systemAlerts.length >
+    100
   ) {
 
-    allAlerts =
-      allAlerts.slice(
+    systemAlerts =
+      systemAlerts.slice(
         0,
         100
       );
@@ -4270,122 +4153,68 @@ function addSystemLog(
 }
 
 
-
 function renderAlerts() {
 
-  const full =
+  const container =
     document.getElementById(
       "allAlerts"
     );
 
 
-  const dashboard =
-    document.getElementById(
-      "alertsList"
-    );
+  if (
+    systemAlerts.length === 0
+  ) {
+
+    container.innerHTML =
+      `
+      <article class="alert info">
+        <span>ℹ</span>
+
+        <div>
+          <strong>No events</strong>
+          <small>Waiting for system activity.</small>
+        </div>
+
+        <time>--</time>
+      </article>
+      `;
+
+    return;
+
+  }
 
 
-  const html =
-    allAlerts.length
-      ? allAlerts
-          .map(
-            alert =>
-              `
-              <article
-                class="alert ${alert[0]}"
-              >
+  container.innerHTML =
+    systemAlerts
+      .map(
+        alert =>
+          `
+          <article class="alert ${alert.type}">
 
-                <span>
-                  ${alert[1]}
-                </span>
+            <span>
+              ${alert.icon}
+            </span>
 
-                <div>
+            <div>
+              <strong>
+                ${alert.title}
+              </strong>
 
-                  <strong>
-                    ${alert[2]}
-                  </strong>
+              <small>
+                ${alert.detail}
+              </small>
+            </div>
 
-                  <small>
-                    ${alert[3]}
-                  </small>
+            <time>
+              ${alert.time}
+            </time>
 
-                </div>
-
-                <time>
-                  ${alert[4]}
-                </time>
-
-              </article>
-              `
-          )
-          .join("")
-      :
-        `
-        <article class="alert info">
-
-          <span>ℹ</span>
-
-          <div>
-
-            <strong>
-              No events yet
-            </strong>
-
-            <small>
-              Connect the Base Station to begin.
-            </small>
-
-          </div>
-
-          <time>--</time>
-
-        </article>
-        `;
-
-
-  full.innerHTML =
-    html;
-
-
-  dashboard.innerHTML =
-    allAlerts.length
-      ? allAlerts
-          .slice(0, 4)
-          .map(
-            alert =>
-              `
-              <article
-                class="alert ${alert[0]}"
-              >
-
-                <span>
-                  ${alert[1]}
-                </span>
-
-                <div>
-
-                  <strong>
-                    ${alert[2]}
-                  </strong>
-
-                  <small>
-                    ${alert[3]}
-                  </small>
-
-                </div>
-
-                <time>
-                  ${alert[4]}
-                </time>
-
-              </article>
-              `
-          )
-          .join("")
-      : html;
+          </article>
+          `
+      )
+      .join("");
 
 }
-
 
 
 document.getElementById(
@@ -4393,53 +4222,30 @@ document.getElementById(
 ).onclick =
   () => {
 
-    allAlerts = [];
+    systemAlerts =
+      [];
+
 
     renderAlerts();
-
-    toast(
-      "Alerts cleared"
-    );
 
   };
 
 
-
 /* =========================================================
-   HISTORY NAVIGATION
-   ========================================================= */
-
-document.getElementById(
-  "openCurrentHistory"
-).onclick =
-  () =>
-    navigate(
-      "sensor"
-    );
-
-
-
-/* =========================================================
-   INITIALIZE GUI
-   ========================================================= */
+   INITIALIZATION
+========================================================= */
 
 populateZoneFilter();
 
 renderSensorHistory();
 
-updateTimestampDisplay();
-
-updateDataAge();
-
-updateMissionUI();
+renderRealHeatmaps();
 
 renderPrescription();
 
-renderMaps();
-
-renderRealHeatmaps();
-
 renderAlerts();
+
+updateTimestampDisplay();
 
 updateBaseStationStatus(
   false
@@ -4448,3 +4254,10 @@ updateBaseStationStatus(
 setRoverOnline(
   false
 );
+
+setCameraOffline();
+
+document.getElementById(
+  "historySampleCount"
+).textContent =
+  sensorRows.length;
