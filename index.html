@@ -404,9 +404,7 @@
           </div>
 
         </section>
-
-
-        <!-- ZONE DETAILS -->
+        <!-- CURRENT POSITION -->
 
         <section class="panel zone-panel">
 
@@ -422,7 +420,7 @@
           </div>
 
           <h4 id="zoneTitle">
-            --
+            Live Rover
           </h4>
 
           <dl class="details">
@@ -435,14 +433,7 @@
             </div>
 
             <div>
-              <dt>Soil pH</dt>
-              <dd>
-                <b id="zonePh">--</b>
-              </dd>
-            </div>
-
-            <div>
-              <dt>Moisture</dt>
+              <dt>Soil Moisture</dt>
               <dd>
                 <b id="zoneMoisture">--%</b>
               </dd>
@@ -463,15 +454,16 @@
             </div>
 
             <div>
-              <dt>Fertilization</dt>
-
+              <dt>Roll</dt>
               <dd>
-                <span
-                  class="badge amber"
-                  id="zoneFertState"
-                >
-                  Pending
-                </span>
+                <b id="zoneRoll">--°</b>
+              </dd>
+            </div>
+
+            <div>
+              <dt>Pitch</dt>
+              <dd>
+                <b id="zonePitch">--°</b>
               </dd>
             </div>
 
@@ -996,23 +988,23 @@
             </div>
 
             <div>
-              <span>Zone</span>
-              <strong id="liveRoverZone">--</strong>
-            </div>
-
-            <div>
               <span>Battery</span>
               <strong id="liveRoverBattery">--%</strong>
             </div>
 
             <div>
-              <span>Speed</span>
-              <strong id="liveRoverSpeed">-- m/s</strong>
+              <span>Roll</span>
+              <strong id="liveRoverRoll">--°</strong>
             </div>
 
             <div>
-              <span>Status</span>
-              <strong id="liveRoverStatus">--</strong>
+              <span>Pitch</span>
+              <strong id="liveRoverPitch">--°</strong>
+            </div>
+
+            <div>
+              <span>Yaw</span>
+              <strong id="liveRoverYaw">--°</strong>
             </div>
 
             <div>
@@ -1027,8 +1019,6 @@
       </div>
 
     </section>
-
-
     <!-- =====================================================
          LIVE TELEMETRY PAGE
     ====================================================== -->
@@ -1041,7 +1031,7 @@
           <h2>Live Telemetry</h2>
 
           <p>
-            Real-time environmental, soil and rover sensor data.
+            Real-time rover telemetry received through the Base Station.
           </p>
         </div>
 
@@ -1154,17 +1144,6 @@
         </article>
 
 
-        <article class="telemetry-card">
-          <span class="telemetry-icon">pH</span>
-
-          <div>
-            <small>Soil pH</small>
-            <strong id="telemetryPh">--</strong>
-            <span>pH</span>
-          </div>
-        </article>
-
-
         <article class="telemetry-card telemetry-gps">
           <span class="telemetry-icon">📍</span>
 
@@ -1181,29 +1160,97 @@
           </div>
         </article>
 
+
+        <article class="telemetry-card">
+          <span class="telemetry-icon">🔋</span>
+
+          <div>
+            <small>Battery</small>
+            <strong id="telemetryBattery">--</strong>
+            <span>%</span>
+          </div>
+        </article>
+
       </div>
 
 
-      <section class="panel telemetry-secondary">
+      <section class="panel telemetry-console-panel">
 
-        <div>
-          <small>Battery</small>
-          <strong id="telemetryBattery">--%</strong>
+        <div class="panel-heading">
+          <h3>Rover IMU / Motion</h3>
+
+          <span class="badge blue">
+            6-axis telemetry
+          </span>
         </div>
 
-        <div>
-          <small>Speed</small>
-          <strong id="telemetrySpeed">-- m/s</strong>
-        </div>
+        <div class="telemetry-grid">
 
-        <div>
-          <small>Current Zone</small>
-          <strong id="telemetryZone">--</strong>
-        </div>
+          <article class="telemetry-card">
+            <span class="telemetry-icon">R</span>
 
-        <div>
-          <small>Mission Progress</small>
-          <strong id="telemetryProgress">--%</strong>
+            <div>
+              <small>Roll</small>
+              <strong id="telemetryRoll">--</strong>
+              <span>deg</span>
+            </div>
+          </article>
+
+
+          <article class="telemetry-card">
+            <span class="telemetry-icon">P</span>
+
+            <div>
+              <small>Pitch</small>
+              <strong id="telemetryPitch">--</strong>
+              <span>deg</span>
+            </div>
+          </article>
+
+
+          <article class="telemetry-card">
+            <span class="telemetry-icon">Y</span>
+
+            <div>
+              <small>Yaw</small>
+              <strong id="telemetryYaw">--</strong>
+              <span>deg</span>
+            </div>
+          </article>
+
+
+          <article class="telemetry-card">
+            <span class="telemetry-icon">X</span>
+
+            <div>
+              <small>Acceleration X</small>
+              <strong id="telemetryAccX">--</strong>
+              <span>m/s²</span>
+            </div>
+          </article>
+
+
+          <article class="telemetry-card">
+            <span class="telemetry-icon">Y</span>
+
+            <div>
+              <small>Acceleration Y</small>
+              <strong id="telemetryAccY">--</strong>
+              <span>m/s²</span>
+            </div>
+          </article>
+
+
+          <article class="telemetry-card">
+            <span class="telemetry-icon">Z</span>
+
+            <div>
+              <small>Acceleration Z</small>
+              <strong id="telemetryAccZ">--</strong>
+              <span>m/s²</span>
+            </div>
+          </article>
+
         </div>
 
       </section>
@@ -1276,16 +1323,7 @@
             To
             <input type="date" id="historyTo">
           </label>
-
-          <label>
-            Zone
-
-            <select id="historyZone">
-              <option value="all">All zones</option>
-            </select>
-          </label>
-
-          <button
+<button
             class="btn primary"
             id="filterHistory"
           >
@@ -1322,14 +1360,15 @@
             <thead>
               <tr>
                 <th>Date & Time</th>
-                <th>Zone</th>
+                <th>Packet</th>
                 <th>N</th>
                 <th>P</th>
                 <th>K</th>
                 <th>Moisture</th>
                 <th>Temp.</th>
                 <th>Humidity</th>
-                <th>pH</th>
+                <th>Battery</th>
+                <th>Roll / Pitch / Yaw</th>
                 <th>Action</th>
               </tr>
             </thead>
@@ -1830,7 +1869,7 @@
 
 </div>
 
-<script src="app.js?v=7"></script>
+<script src="app.js?v=8"></script>
 
 </body>
 </html>
