@@ -1,6 +1,6 @@
 /* =========================================================
    AGRIROVER
-   LIVE GPS MAP + 16 FIELD TELEMETRY
+   LIVE GPS MAP + 16 FIELD TELEMETRY + YAW DIRECTION POINTER
 ========================================================= */
 
 
@@ -82,7 +82,7 @@ let mapHasCenteredOnce =
 ========================================================= */
 
 const STORAGE_KEY =
-  "agriroverTelemetryV10";
+  "agriroverTelemetryV11";
 
 
 function loadHistory() {
@@ -1239,14 +1239,26 @@ function updateDashboard(
   );
 
 
-  el("batteryBar")
-    .style.width =
-      `${data.battery}%`;
+  if (
+    el("batteryBar")
+  ) {
+
+    el("batteryBar")
+      .style.width =
+        `${data.battery}%`;
+
+  }
 
 
-  el("sideBatteryBar")
-    .style.width =
-      `${data.battery}%`;
+  if (
+    el("sideBatteryBar")
+  ) {
+
+    el("sideBatteryBar")
+      .style.width =
+        `${data.battery}%`;
+
+  }
 
 
   setText(
@@ -1581,13 +1593,6 @@ function updateGauge(
 
 function initializeRoverMaps() {
 
-  /*
-     Initial map location before GPS
-     lock.
-
-     Change if desired.
-  */
-
   const initial = [
     23.7806,
     90.4071
@@ -1695,10 +1700,18 @@ function initializeRoverMaps() {
 
 
 /* =========================================================
-   ROVER ICON
+   ROVER DIRECTION ICON
+
+   Yaw:
+   0°   = North
+   90°  = East
+   180° = South
+   270° = West
 ========================================================= */
 
-function createRoverIcon() {
+function createRoverIcon(
+  yaw = 0
+) {
 
   return L.divIcon({
 
@@ -1707,19 +1720,22 @@ function createRoverIcon() {
 
     html:
       `
-      <div class="rover-marker">
-        🚜
+      <div
+        class="rover-direction-marker"
+        style="transform:rotate(${yaw}deg);"
+      >
+        ▲
       </div>
       `,
 
     iconSize:
-      [36, 36],
+      [42, 42],
 
     iconAnchor:
-      [18, 18],
+      [21, 21],
 
     popupAnchor:
-      [0, -20]
+      [0, -23]
 
   });
 
@@ -1803,6 +1819,12 @@ function updateRoverLocation(
     );
 
 
+    setText(
+      "telemetryGpsStatus",
+      "No GPS Fix"
+    );
+
+
     return;
 
   }
@@ -1815,7 +1837,7 @@ function updateRoverLocation(
 
 
   /*
-     Store rover path.
+     Save rover path.
   */
 
   const previous =
@@ -1826,8 +1848,8 @@ function updateRoverLocation(
 
 
   /*
-     Avoid storing the exact same
-     coordinate repeatedly.
+     Avoid storing identical GPS
+     values over and over.
   */
 
   if (
@@ -1843,6 +1865,10 @@ function updateRoverLocation(
   }
 
 
+  /*
+     Keep path size under control.
+  */
+
   if (
     roverGpsHistory.length >
     1000
@@ -1853,9 +1879,9 @@ function updateRoverLocation(
   }
 
 
-  /*
-     Dashboard marker.
-  */
+  /* =====================================================
+     SMALL DASHBOARD MAP
+  ===================================================== */
 
   if (
     roverMap
@@ -1870,7 +1896,9 @@ function updateRoverLocation(
           position,
           {
             icon:
-              createRoverIcon()
+              createRoverIcon(
+                data.yaw
+              )
           }
         )
         .addTo(
@@ -1881,9 +1909,25 @@ function updateRoverLocation(
 
     else {
 
+      /*
+         Move rover.
+      */
+
       roverMarker
         .setLatLng(
           position
+        );
+
+
+      /*
+         Rotate pointer.
+      */
+
+      roverMarker
+        .setIcon(
+          createRoverIcon(
+            data.yaw
+          )
         );
 
     }
@@ -1905,9 +1949,9 @@ function updateRoverLocation(
   }
 
 
-  /*
-     Large marker.
-  */
+  /* =====================================================
+     LARGE LIVE ROVER MAP
+  ===================================================== */
 
   if (
     largeRoverMap
@@ -1922,7 +1966,9 @@ function updateRoverLocation(
           position,
           {
             icon:
-              createRoverIcon()
+              createRoverIcon(
+                data.yaw
+              )
           }
         )
         .addTo(
@@ -1936,6 +1982,14 @@ function updateRoverLocation(
       largeRoverMarker
         .setLatLng(
           position
+        );
+
+
+      largeRoverMarker
+        .setIcon(
+          createRoverIcon(
+            data.yaw
+          )
         );
 
     }
@@ -1958,8 +2012,8 @@ function updateRoverLocation(
 
 
   /*
-     Center automatically only
-     on first real GPS point.
+     Automatically center map when
+     the first valid GPS fix arrives.
   */
 
   if (
@@ -1987,7 +2041,7 @@ function updateRoverLocation(
 
 
   /*
-     Update labels.
+     Dashboard location labels.
   */
 
   setText(
@@ -2015,11 +2069,19 @@ function updateRoverLocation(
   );
 
 
+  /*
+     Rover position panel.
+  */
+
   setText(
     "zoneGps",
     `${lat.toFixed(6)}° N, ${lon.toFixed(6)}° E`
   );
 
+
+  /*
+     Live rover page.
+  */
 
   setText(
     "liveRoverLatitude",
@@ -2065,6 +2127,10 @@ function updateRoverLocation(
   );
 
 
+  /*
+     GPS state labels.
+  */
+
   setText(
     "mapGpsStatus",
     "GPS Fix"
@@ -2090,10 +2156,20 @@ function updateRoverLocation(
 
 
   setText(
+    "telemetryGpsStatus",
+    "GPS Fix"
+  );
+
+
+  setText(
     "trackPointCount",
     `${roverGpsHistory.length} points`
   );
 
+
+  /*
+     GPS status dots.
+  */
 
   [
     "mapGpsDot",
@@ -2122,12 +2198,6 @@ function updateRoverLocation(
     }
   );
 
-
-  setText(
-    "telemetryGpsStatus",
-    "GPS Fix"
-  );
-
 }
 
 
@@ -2153,6 +2223,11 @@ function buildRoverPopup(
 
     Battery:
     ${Math.round(data.battery)}%
+
+    <br>
+
+    Heading:
+    ${data.yaw.toFixed(1)}°
 
     <br>
 
@@ -2419,10 +2494,18 @@ function setRoverOnline(
     );
 
 
-    el(
-      "sideRoverStatus"
-    ).className =
-      "ok";
+    if (
+      el(
+        "sideRoverStatus"
+      )
+    ) {
+
+      el(
+        "sideRoverStatus"
+      ).className =
+        "ok";
+
+    }
 
   }
 
@@ -2459,10 +2542,10 @@ function setRoverOnline(
 
 
 /*
-   Rover telemetry interval has been
-   around 5 seconds.
+   Rover telemetry interval is about
+   5 seconds.
 
-   Use 8 second timeout.
+   Mark offline after 8 seconds.
 */
 
 setInterval(
@@ -2494,6 +2577,26 @@ setInterval(
         "telemetryStatusText",
         "Telemetry Lost"
       );
+
+
+      const telemetryDot =
+        el(
+          "telemetryStatusDot"
+        );
+
+
+      telemetryDot
+        ?.classList
+        .remove(
+          "connected-dot"
+        );
+
+
+      telemetryDot
+        ?.classList
+        .add(
+          "disconnected-dot"
+        );
 
     }
 
@@ -2691,15 +2794,28 @@ function saveTelemetrySample(
   }
 
 
-  localStorage.setItem(
+  try {
 
-    STORAGE_KEY,
+    localStorage.setItem(
 
-    JSON.stringify(
-      sensorRows
-    )
+      STORAGE_KEY,
 
-  );
+      JSON.stringify(
+        sensorRows
+      )
+
+    );
+
+  }
+
+  catch (error) {
+
+    console.error(
+      "History save error:",
+      error
+    );
+
+  }
 
 
   renderHistory();
@@ -3054,16 +3170,32 @@ el("resetHistoryFilter")
     "click",
     () => {
 
-      el(
-        "historyFrom"
-      ).value =
-        "";
+      if (
+        el(
+          "historyFrom"
+        )
+      ) {
+
+        el(
+          "historyFrom"
+        ).value =
+          "";
+
+      }
 
 
-      el(
-        "historyTo"
-      ).value =
-        "";
+      if (
+        el(
+          "historyTo"
+        )
+      ) {
+
+        el(
+          "historyTo"
+        ).value =
+          "";
+
+      }
 
 
       renderHistory();
@@ -3217,40 +3349,88 @@ function updateRecommendationInputs(
   data
 ) {
 
-  el(
-    "recN"
-  ).value =
-    data.nitrogen;
+  if (
+    el(
+      "recN"
+    )
+  ) {
+
+    el(
+      "recN"
+    ).value =
+      data.nitrogen;
+
+  }
 
 
-  el(
-    "recP"
-  ).value =
-    data.phosphorus;
+  if (
+    el(
+      "recP"
+    )
+  ) {
+
+    el(
+      "recP"
+    ).value =
+      data.phosphorus;
+
+  }
 
 
-  el(
-    "recK"
-  ).value =
-    data.potassium;
+  if (
+    el(
+      "recK"
+    )
+  ) {
+
+    el(
+      "recK"
+    ).value =
+      data.potassium;
+
+  }
 
 
-  el(
-    "recMoisture"
-  ).value =
-    data.soil;
+  if (
+    el(
+      "recMoisture"
+    )
+  ) {
+
+    el(
+      "recMoisture"
+    ).value =
+      data.soil;
+
+  }
 
 
-  el(
-    "recTemp"
-  ).value =
-    data.temperature;
+  if (
+    el(
+      "recTemp"
+    )
+  ) {
+
+    el(
+      "recTemp"
+    ).value =
+      data.temperature;
+
+  }
 
 
-  el(
-    "recHumidity"
-  ).value =
-    data.humidity;
+  if (
+    el(
+      "recHumidity"
+    )
+  ) {
+
+    el(
+      "recHumidity"
+    ).value =
+      data.humidity;
+
+  }
 
 }
 
@@ -3303,7 +3483,8 @@ function runCropRecommendation() {
     Number(
       el(
         "recMoisture"
-      ).value
+      )?.value ||
+      0
     );
 
 
@@ -3311,7 +3492,8 @@ function runCropRecommendation() {
     Number(
       el(
         "recTemp"
-      ).value
+      )?.value ||
+      0
     );
 
 
@@ -3388,35 +3570,43 @@ function runCropRecommendation() {
   );
 
 
-  el(
-    "cropResults"
-  ).innerHTML =
-    results
-      .map(
-        crop =>
-          `
-          <div class="telemetry-card">
+  if (
+    el(
+      "cropResults"
+    )
+  ) {
 
-            <span class="telemetry-icon">
-              ${crop.emoji}
-            </span>
+    el(
+      "cropResults"
+    ).innerHTML =
+      results
+        .map(
+          crop =>
+            `
+            <div class="telemetry-card">
 
-            <div>
+              <span class="telemetry-icon">
+                ${crop.emoji}
+              </span>
 
-              <small>
-                ${crop.name}
-              </small>
+              <div>
 
-              <strong>
-                ${crop.score}%
-              </strong>
+                <small>
+                  ${crop.name}
+                </small>
+
+                <strong>
+                  ${crop.score}%
+                </strong>
+
+              </div>
 
             </div>
+            `
+        )
+        .join("");
 
-          </div>
-          `
-      )
-      .join("");
+  }
 
 }
 
@@ -3492,6 +3682,13 @@ async function sendBaseCommand(
     );
 
 
+    addAlert(
+      "info",
+      "Command sent",
+      command
+    );
+
+
     return true;
 
   }
@@ -3500,6 +3697,11 @@ async function sendBaseCommand(
 
     console.error(
       error
+    );
+
+
+    toast(
+      "Command transmission failed"
     );
 
 
@@ -3653,7 +3855,8 @@ document
           const speed =
             el(
               "manualSpeed"
-            ).value;
+            )?.value ||
+            "0.5";
 
 
           const command =
@@ -3739,13 +3942,6 @@ document
             );
 
 
-          /*
-             Temporary UI feedback.
-
-             Later change this only
-             after Base Station ACK.
-          */
-
           if (
             sent
           ) {
@@ -3755,12 +3951,22 @@ document
             );
 
 
-            button
-              .querySelector(
+            const label =
+              button.querySelector(
                 "b"
-              )
-              .textContent =
-                action;
+              );
+
+
+            if (
+              label
+            ) {
+
+              label.textContent =
+                action === "OPEN"
+                  ? "OPEN"
+                  : "CLOSED";
+
+            }
 
           }
 
@@ -3893,6 +4099,20 @@ function addAlert(
         .toLocaleTimeString()
 
   });
+
+
+  if (
+    systemAlerts.length >
+    100
+  ) {
+
+    systemAlerts =
+      systemAlerts.slice(
+        0,
+        100
+      );
+
+  }
 
 
   renderAlerts();
@@ -4045,7 +4265,7 @@ setText(
 
 
 console.log(
-  "AgriRover V10 loaded"
+  "AgriRover V11 loaded"
 );
 
 
