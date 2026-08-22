@@ -1,1875 +1,2761 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <meta
-    name="description"
-    content="AgriRover autonomous precision fertilization dashboard"
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
   >
 
-  <title>AgriRover Dashboard</title>
+  <title>
+    AgriRover Dashboard
+  </title>
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <!-- FONT -->
+
+  <link
+    rel="preconnect"
+    href="https://fonts.googleapis.com"
+  >
+
+  <link
+    rel="preconnect"
+    href="https://fonts.gstatic.com"
+    crossorigin
+  >
 
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
     rel="stylesheet"
   >
 
-  <link rel="stylesheet" href="styles.css?v=7">
+
+  <!-- LEAFLET -->
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  >
+
+
+  <!-- OUR CSS -->
+
+  <link
+    rel="stylesheet"
+    href="styles.css?v=10"
+  >
+
 </head>
+
 
 <body>
 
+
 <div class="app-shell">
 
-  <!-- =====================================================
-       SIDEBAR
-  ====================================================== -->
 
-  <aside class="sidebar" id="sidebar">
+<!-- =====================================================
+     SIDEBAR
+===================================================== -->
 
-    <div class="brand">
-      <div class="brand-mark">🌱</div>
+<aside
+  class="sidebar"
+  id="sidebar"
+>
 
-      <div>
-        <h1>AgriRover</h1>
-        <p>Precision Fertilization</p>
-      </div>
+
+  <div class="brand">
+
+    <div class="brand-mark">
+      🌱
     </div>
 
-    <nav class="nav">
 
-      <button class="nav-item active" data-page="dashboard">
-        ⌂ <span>Dashboard</span>
-      </button>
+    <div>
 
-      <button class="nav-item" data-page="field">
-        ▦ <span>Field Setup</span>
-      </button>
+      <h1>
+        AgriRover
+      </h1>
 
-      <button class="nav-item" data-page="liveRover">
-        📷 <span>Live Rover</span>
-      </button>
-
-      <button class="nav-item" data-page="telemetry">
-        📡 <span>Live Telemetry</span>
-      </button>
-
-      <button class="nav-item" data-page="sensor">
-        ◫ <span>Soil Sensor Data</span>
-      </button>
-
-      <button class="nav-item" data-page="nutrientHeatmapPage">
-        ▤ <span>Nutrient Heatmap</span>
-      </button>
-
-      <button class="nav-item" data-page="crop">
-        ♧ <span>Crop Recommendation</span>
-      </button>
-
-      <button class="nav-item" data-page="prescription">
-        ✦ <span>Fertilizer Prescription</span>
-      </button>
-
-      <button class="nav-item" data-page="sprinkler">
-        ⌁ <span>Sprinkler Control</span>
-      </button>
-
-      <button class="nav-item" data-page="manual">
-        ✥ <span>Manual Control</span>
-      </button>
-
-      <button class="nav-item" data-page="history">
-        ◷ <span>Mission History</span>
-      </button>
-
-      <button class="nav-item" data-page="alerts">
-        ⚠ <span>Alerts & Logs</span>
-      </button>
-
-    </nav>
-
-    <div class="sidebar-summary">
-
-      <div>
-        <span>Battery</span>
-        <strong id="sideBattery">--%</strong>
-      </div>
-
-      <div class="mini-progress">
-        <i id="sideBatteryBar" style="width:0%"></i>
-      </div>
-
-      <div>
-        <span>Zones</span>
-        <strong id="sideZones">0 / 64</strong>
-      </div>
-
-      <div>
-        <span>Rover</span>
-        <strong id="sideRoverStatus">Waiting</strong>
-      </div>
+      <p>
+        Precision Fertilization
+      </p>
 
     </div>
 
-  </aside>
+  </div>
 
 
-  <!-- =====================================================
-       MAIN
-  ====================================================== -->
+  <nav class="nav">
 
-  <main class="main">
 
-    <!-- =====================================================
-         TOP BAR
-    ====================================================== -->
+    <button
+      class="nav-item active"
+      data-page="dashboard"
+    >
+      ⌂
+      <span>Dashboard</span>
+    </button>
 
-    <header class="topbar">
 
-      <button class="menu-btn" id="menuBtn">
-        ☰
-      </button>
+    <button
+      class="nav-item"
+      data-page="field"
+    >
+      ▦
+      <span>Field Setup</span>
+    </button>
 
-      <div class="status-chip">
+
+    <button
+      class="nav-item"
+      data-page="liveRover"
+    >
+      📍
+      <span>Live Rover</span>
+    </button>
+
+
+    <button
+      class="nav-item"
+      data-page="telemetry"
+    >
+      📡
+      <span>Live Telemetry</span>
+    </button>
+
+
+    <button
+      class="nav-item"
+      data-page="sensor"
+    >
+      ◫
+      <span>Soil Sensor Data</span>
+    </button>
+
+
+    <button
+      class="nav-item"
+      data-page="nutrientHeatmapPage"
+    >
+      ▤
+      <span>Nutrient Heatmap</span>
+    </button>
+
+
+    <button
+      class="nav-item"
+      data-page="crop"
+    >
+      ♧
+      <span>Crop Recommendation</span>
+    </button>
+
+
+    <button
+      class="nav-item"
+      data-page="prescription"
+    >
+      ✦
+      <span>Fertilizer Prescription</span>
+    </button>
+
+
+    <button
+      class="nav-item"
+      data-page="sprinkler"
+    >
+      ⌁
+      <span>Sprinkler Control</span>
+    </button>
+
+
+    <button
+      class="nav-item"
+      data-page="manual"
+    >
+      ✥
+      <span>Manual Control</span>
+    </button>
+
+
+    <button
+      class="nav-item"
+      data-page="history"
+    >
+      ◷
+      <span>Mission History</span>
+    </button>
+
+
+    <button
+      class="nav-item"
+      data-page="alerts"
+    >
+      ⚠
+      <span>Alerts & Logs</span>
+    </button>
+
+
+  </nav>
+
+
+  <div class="sidebar-summary">
+
+
+    <div>
+      <span>Battery</span>
+      <strong id="sideBattery">--%</strong>
+    </div>
+
+
+    <div class="mini-progress">
+
+      <i
+        id="sideBatteryBar"
+        style="width:0%"
+      ></i>
+
+    </div>
+
+
+    <div>
+
+      <span>Rover</span>
+
+      <strong id="sideRoverStatus">
+        Waiting
+      </strong>
+
+    </div>
+
+
+  </div>
+
+
+</aside>
+
+
+
+<!-- =====================================================
+     MAIN
+===================================================== -->
+
+<main class="main">
+
+
+<!-- =====================================================
+     TOP BAR
+===================================================== -->
+
+<header class="topbar">
+
+
+  <button
+    class="menu-btn"
+    id="menuBtn"
+  >
+    ☰
+  </button>
+
+
+  <div class="status-chip">
+
+    <span
+      class="dot disconnected-dot"
+      id="roverStatusDot"
+    ></span>
+
+    <div>
+
+      <small>
+        Rover LoRa
+      </small>
+
+      <strong id="roverStatusText">
+        Waiting
+      </strong>
+
+    </div>
+
+  </div>
+
+
+  <div class="status-chip">
+
+    <span
+      class="dot disconnected-dot"
+      id="baseStatusDot"
+    ></span>
+
+    <div>
+
+      <small>
+        Base Station
+      </small>
+
+      <strong id="baseStatusText">
+        Disconnected
+      </strong>
+
+    </div>
+
+  </div>
+
+
+  <button
+    class="btn connect-btn"
+    id="connectBaseStation"
+  >
+    🔌 Connect
+  </button>
+
+
+  <div class="mode-box">
+
+    <div>
+
+      <small>
+        Mode
+      </small>
+
+      <strong id="modeLabel">
+        Autonomous
+      </strong>
+
+    </div>
+
+
+    <div>
+
+      <small>
+        Mission Status
+      </small>
+
+      <strong id="missionStatus">
+        Idle
+      </strong>
+
+    </div>
+
+  </div>
+
+
+  <div class="clock">
+
+    <small>
+      Date & Time
+    </small>
+
+    <strong id="clockText"></strong>
+
+  </div>
+
+
+  <button
+    class="emergency"
+    id="emergencyBtn"
+  >
+    Emergency Stop
+  </button>
+
+
+</header>
+
+
+
+<!-- =====================================================
+     DASHBOARD
+===================================================== -->
+
+<section
+  class="page active"
+  id="dashboard"
+>
+
+
+<div class="page-title">
+
+
+  <div>
+
+    <h2>
+      Mission Dashboard
+    </h2>
+
+    <p>
+      Live rover telemetry, position and precision fertilization monitoring.
+    </p>
+
+  </div>
+
+
+  <div class="action-row">
+
+    <button
+      class="btn secondary"
+      id="pauseMission"
+    >
+      Pause
+    </button>
+
+
+    <button
+      class="btn primary"
+      id="startMission"
+    >
+      Start Mission
+    </button>
+
+  </div>
+
+
+</div>
+
+
+
+<div class="dashboard-grid">
+
+
+<!-- =====================================================
+     OVERVIEW
+===================================================== -->
+
+<section class="panel overview-panel">
+
+
+  <div class="panel-heading">
+
+    <h3>
+      Overview
+    </h3>
+
+    <span
+      class="badge blue"
+      id="overviewState"
+    >
+      Waiting
+    </span>
+
+  </div>
+
+
+  <div class="metric-grid">
+
+
+    <article class="metric">
+
+      <span>
+        Rover Battery
+      </span>
+
+      <strong id="batteryValue">
+        --%
+      </strong>
+
+      <div class="progress">
+
+        <i
+          id="batteryBar"
+          style="width:0%"
+        ></i>
+
+      </div>
+
+    </article>
+
+
+
+    <article class="metric">
+
+      <span>
+        Packet Number
+      </span>
+
+      <strong id="dashboardPacket">
+        --
+      </strong>
+
+      <small>
+        Latest telemetry
+      </small>
+
+    </article>
+
+
+
+    <article class="metric">
+
+      <span>
+        GPS Status
+      </span>
+
+      <strong id="dashboardGpsStatus">
+        Waiting
+      </strong>
+
+      <small>
+        Rover location
+      </small>
+
+    </article>
+
+
+
+    <article class="metric">
+
+      <span>
+        Soil Moisture
+      </span>
+
+      <strong id="dashboardMoisture">
+        --%
+      </strong>
+
+      <small>
+        Current reading
+      </small>
+
+    </article>
+
+
+
+    <article class="metric">
+
+      <span>
+        Temperature
+      </span>
+
+      <strong id="dashboardTemperature">
+        -- °C
+      </strong>
+
+      <small>
+        Ambient
+      </small>
+
+    </article>
+
+
+
+    <article class="metric">
+
+      <span>
+        Humidity
+      </span>
+
+      <strong id="dashboardHumidity">
+        --%
+      </strong>
+
+      <small>
+        Ambient
+      </small>
+
+    </article>
+
+
+  </div>
+
+
+</section>
+
+
+
+<!-- =====================================================
+     LIVE ROVER MAP
+===================================================== -->
+
+<section class="panel rover-map-panel">
+
+
+  <div class="panel-heading">
+
+
+    <h3>
+      Live Rover Location
+    </h3>
+
+
+    <div class="map-live-status">
+
+      <span
+        class="dot disconnected-dot"
+        id="mapGpsDot"
+      ></span>
+
+      <span id="mapGpsStatus">
+        Waiting for GPS
+      </span>
+
+    </div>
+
+
+  </div>
+
+
+  <div
+    id="roverLiveMap"
+    class="rover-live-map"
+  ></div>
+
+
+  <div class="rover-map-footer">
+
+
+    <div>
+
+      <small>
+        Latitude
+      </small>
+
+      <strong id="mapLatitude">
+        --
+      </strong>
+
+    </div>
+
+
+    <div>
+
+      <small>
+        Longitude
+      </small>
+
+      <strong id="mapLongitude">
+        --
+      </strong>
+
+    </div>
+
+
+    <div>
+
+      <small>
+        Packet
+      </small>
+
+      <strong id="mapPacketNumber">
+        --
+      </strong>
+
+    </div>
+
+
+    <div>
+
+      <small>
+        Last Update
+      </small>
+
+      <strong id="mapLastUpdate">
+        --
+      </strong>
+
+    </div>
+
+
+  </div>
+
+
+  <div class="map-actions">
+
+
+    <button
+      class="btn secondary"
+      id="centerRoverMap"
+    >
+      Center Rover
+    </button>
+
+
+    <button
+      class="btn secondary"
+      id="clearRoverTrack"
+    >
+      Clear Track
+    </button>
+
+
+  </div>
+
+
+</section>
+
+
+
+<!-- =====================================================
+     POSITION DETAILS
+===================================================== -->
+
+<section class="panel zone-panel">
+
+
+  <div class="panel-heading">
+
+    <h3>
+      Rover Position
+    </h3>
+
+    <span
+      class="badge blue"
+      id="positionStatus"
+    >
+      Waiting
+    </span>
+
+  </div>
+
+
+  <dl class="details">
+
+
+    <div>
+
+      <dt>
+        GPS Coordinates
+      </dt>
+
+      <dd id="zoneGps">
+        Waiting for GPS...
+      </dd>
+
+    </div>
+
+
+    <div>
+
+      <dt>
+        Roll
+      </dt>
+
+      <dd id="positionRoll">
+        --
+      </dd>
+
+    </div>
+
+
+    <div>
+
+      <dt>
+        Pitch
+      </dt>
+
+      <dd id="positionPitch">
+        --
+      </dd>
+
+    </div>
+
+
+    <div>
+
+      <dt>
+        Yaw
+      </dt>
+
+      <dd id="positionYaw">
+        --
+      </dd>
+
+    </div>
+
+
+    <div>
+
+      <dt>
+        Battery
+      </dt>
+
+      <dd id="positionBattery">
+        --%
+      </dd>
+
+    </div>
+
+
+    <div>
+
+      <dt>
+        Last Packet
+      </dt>
+
+      <dd id="positionLastPacket">
+        --
+      </dd>
+
+    </div>
+
+
+  </dl>
+
+
+</section>
+
+
+
+<!-- =====================================================
+     NPK
+===================================================== -->
+
+<section class="panel sensor-panel">
+
+
+  <div class="panel-heading">
+
+    <h3>
+      NPK Real-Time Readings
+    </h3>
+
+    <span class="live-dot">
+      ● Live
+    </span>
+
+  </div>
+
+
+  <div class="gauges">
+
+
+    <div
+      class="gauge danger"
+      style="--value:0"
+    >
+
+      <div>
+
+        <strong id="nGauge">
+          --
+        </strong>
+
+        <small>
+          mg/kg
+        </small>
+
+      </div>
+
+      <span>
+        Nitrogen
+      </span>
+
+    </div>
+
+
+
+    <div
+      class="gauge danger"
+      style="--value:0"
+    >
+
+      <div>
+
+        <strong id="pGauge">
+          --
+        </strong>
+
+        <small>
+          mg/kg
+        </small>
+
+      </div>
+
+      <span>
+        Phosphorus
+      </span>
+
+    </div>
+
+
+
+    <div
+      class="gauge success"
+      style="--value:0"
+    >
+
+      <div>
+
+        <strong id="kGauge">
+          --
+        </strong>
+
+        <small>
+          mg/kg
+        </small>
+
+      </div>
+
+      <span>
+        Potassium
+      </span>
+
+    </div>
+
+
+  </div>
+
+
+  <div class="sensor-footer">
+
+
+    <span>
+
+      <i
+        class="dot disconnected-dot"
+        id="sensorStatusDot"
+      ></i>
+
+      <span id="sensorStatusText">
+        Waiting for data
+      </span>
+
+    </span>
+
+
+    <button
+      class="btn small"
+      id="takeSample"
+    >
+      Take Sample
+    </button>
+
+
+  </div>
+
+
+  <div class="data-timestamp">
+
+
+    <div>
+
+      <span class="timestamp-label">
+        Last sensor update
+      </span>
+
+      <strong id="sensorTimestamp">
+        No data received
+      </strong>
+
+    </div>
+
+
+    <div>
+
+      <span class="timestamp-label">
+        Data age
+      </span>
+
+      <strong id="sensorDataAge">
+        No data
+      </strong>
+
+    </div>
+
+
+  </div>
+
+
+</section>
+
+
+
+<!-- =====================================================
+     HEATMAP
+===================================================== -->
+
+<section class="panel heatmap-panel">
+
+
+  <div class="panel-heading">
+
+    <h3>
+      Nutrient Heatmap
+    </h3>
+
+    <select id="heatmapType">
+
+      <option value="n">
+        Nitrogen
+      </option>
+
+      <option value="p">
+        Phosphorus
+      </option>
+
+      <option value="k">
+        Potassium
+      </option>
+
+    </select>
+
+  </div>
+
+
+  <div class="heatmap-placeholder">
+
+    GPS-based nutrient mapping will be generated
+    from saved NPK measurement coordinates.
+
+  </div>
+
+
+</section>
+
+
+
+<!-- =====================================================
+     CROP
+===================================================== -->
+
+<section class="panel crop-panel">
+
+
+  <div class="panel-heading">
+
+    <h3>
+      Recommended Crop
+    </h3>
+
+    <span class="badge green">
+      Recommendation
+    </span>
+
+  </div>
+
+
+  <div class="crop-best">
+
+
+    <div class="crop-icon">
+      🌾
+    </div>
+
+
+    <div>
+
+      <small>
+        Best Recommended Crop
+      </small>
+
+      <h4 id="bestCrop">
+        --
+      </h4>
+
+      <p id="cropReason">
+        Generate recommendation from current measurements.
+      </p>
+
+    </div>
+
+
+    <div class="score">
+
+      <strong id="cropScore">
+        --%
+      </strong>
+
+      <small>
+        Suitability
+      </small>
+
+    </div>
+
+
+  </div>
+
+
+  <button
+    class="btn primary full"
+    id="generateRecommendation"
+  >
+    Generate Recommendation
+  </button>
+
+
+</section>
+
+
+
+<!-- =====================================================
+     FERTILIZER CONTROL
+===================================================== -->
+
+<section class="panel control-panel">
+
+
+  <div class="panel-heading">
+
+    <h3>
+      Fertilizer Control
+    </h3>
+
+    <span
+      class="badge amber"
+      id="pumpStatus"
+    >
+      OFF
+    </span>
+
+  </div>
+
+
+  <div class="action-row three">
+
+
+    <button
+      class="btn success"
+      id="startSpray"
+    >
+      Pump ON
+    </button>
+
+
+    <button
+      class="btn warning"
+      id="pauseSpray"
+    >
+      Pump OFF
+    </button>
+
+
+    <button
+      class="btn danger"
+      id="stopSpray"
+    >
+      All OFF
+    </button>
+
+
+  </div>
+
+
+  <div class="valves">
+
+
+    <button
+      class="valve"
+      data-valve="N"
+    >
+      N Valve
+      <b>CLOSED</b>
+    </button>
+
+
+    <button
+      class="valve"
+      data-valve="P"
+    >
+      P Valve
+      <b>CLOSED</b>
+    </button>
+
+
+    <button
+      class="valve"
+      data-valve="K"
+    >
+      K Valve
+      <b>CLOSED</b>
+    </button>
+
+
+  </div>
+
+
+</section>
+
+
+</div>
+
+</section>
+
+
+
+<!-- =====================================================
+     FIELD SETUP
+===================================================== -->
+
+<section
+  class="page"
+  id="field"
+>
+
+
+  <div class="page-title">
+
+    <div>
+
+      <h2>
+        Field Setup
+      </h2>
+
+      <p>
+        Configure mission and field information.
+      </p>
+
+    </div>
+
+  </div>
+
+
+  <section class="panel form-panel">
+
+
+    <div class="form-grid">
+
+
+      <label>
+
+        Field Name
+
+        <input
+          id="fieldName"
+          value="BRAC Test Field"
+        >
+
+      </label>
+
+
+      <label>
+
+        Crop
+
+        <select id="cropType">
+
+          <option>Rice</option>
+          <option>Maize</option>
+          <option>Wheat</option>
+          <option>Mustard</option>
+
+        </select>
+
+      </label>
+
+
+      <label>
+
+        Target Nitrogen
+
+        <input
+          id="targetN"
+          type="number"
+          value="45"
+        >
+
+      </label>
+
+
+      <label>
+
+        Target Phosphorus
+
+        <input
+          id="targetP"
+          type="number"
+          value="25"
+        >
+
+      </label>
+
+
+      <label>
+
+        Target Potassium
+
+        <input
+          id="targetK"
+          type="number"
+          value="120"
+        >
+
+      </label>
+
+
+    </div>
+
+
+  </section>
+
+
+</section>
+
+
+
+<!-- =====================================================
+     LIVE ROVER FULL PAGE
+===================================================== -->
+
+<section
+  class="page"
+  id="liveRover"
+>
+
+
+  <div class="page-title">
+
+
+    <div>
+
+      <h2>
+        Live Rover Tracking
+      </h2>
+
+      <p>
+        Real-time rover position and travelled path using GPS telemetry.
+      </p>
+
+    </div>
+
+
+    <div class="telemetry-live-status">
+
+      <span
+        class="dot disconnected-dot"
+        id="largeMapGpsDot"
+      ></span>
+
+      <strong id="largeMapGpsStatus">
+        Waiting for GPS
+      </strong>
+
+    </div>
+
+
+  </div>
+
+
+  <div class="live-rover-layout">
+
+
+    <section class="panel">
+
+
+      <div class="panel-heading">
+
+        <h3>
+          Rover GPS Map
+        </h3>
 
         <span
-          class="dot disconnected-dot"
-          id="roverStatusDot"
-        ></span>
-
-        <div>
-          <small>Rover LoRa</small>
-          <strong id="roverStatusText">Waiting</strong>
-        </div>
-
-      </div>
-
-      <div class="status-chip">
-
-        <span
-          class="dot disconnected-dot"
-          id="baseStatusDot"
-        ></span>
-
-        <div>
-          <small>Base Station</small>
-          <strong id="baseStatusText">Disconnected</strong>
-        </div>
-
-      </div>
-
-      <button
-        class="btn connect-btn"
-        id="connectBaseStation"
-      >
-        🔌 Connect
-      </button>
-
-      <div class="mode-box">
-
-        <div>
-          <small>Mode</small>
-          <strong id="modeLabel">Autonomous</strong>
-        </div>
-
-        <div>
-          <small>Mission Status</small>
-          <strong id="missionStatus">Idle</strong>
-        </div>
-
-      </div>
-
-      <div class="clock">
-        <small>Date & Time</small>
-        <strong id="clockText"></strong>
-      </div>
-
-      <button class="emergency" id="emergencyBtn">
-        Emergency Stop
-      </button>
-
-    </header>
-
-
-    <!-- =====================================================
-         DASHBOARD
-    ====================================================== -->
-
-    <section class="page active" id="dashboard">
-
-      <div class="page-title">
-
-        <div>
-          <h2>Mission Dashboard</h2>
-          <p>
-            Live monitoring and control of the autonomous rover
-            and fertilization system.
-          </p>
-        </div>
-
-        <div class="action-row">
-          <button class="btn secondary" id="pauseMission">
-            Pause
-          </button>
-
-          <button class="btn primary" id="startMission">
-            Start Mission
-          </button>
-        </div>
+          class="badge blue"
+          id="trackPointCount"
+        >
+          0 points
+        </span>
 
       </div>
 
 
-      <div class="dashboard-grid">
+      <div
+        id="largeRoverMap"
+        class="large-rover-map"
+      ></div>
 
-        <!-- OVERVIEW -->
 
-        <section class="panel overview-panel">
+      <div class="map-actions">
 
-          <div class="panel-heading">
-            <h3>Overview</h3>
 
-            <span
-              class="badge blue"
-              id="overviewState"
-            >
-              Waiting
-            </span>
-          </div>
+        <button
+          class="btn secondary"
+          id="centerLargeRoverMap"
+        >
+          Center Rover
+        </button>
 
-          <div class="metric-grid">
 
-            <article class="metric">
-              <span>Rover Battery</span>
+        <button
+          class="btn secondary"
+          id="clearLargeRoverTrack"
+        >
+          Clear Track
+        </button>
 
-              <strong id="batteryValue">
-                --%
-              </strong>
-
-              <div class="progress">
-                <i id="batteryBar" style="width:0%"></i>
-              </div>
-            </article>
-
-            <article class="metric">
-              <span>Rover Speed</span>
-
-              <strong id="speedValue">
-                -- m/s
-              </strong>
-
-              <small>Target: 1.0 m/s</small>
-            </article>
-
-            <article class="metric">
-              <span>Current Zone</span>
-
-              <strong id="currentZone">
-                --
-              </strong>
-
-              <small>Sampling point</small>
-            </article>
-
-            <article class="metric">
-              <span>Mission Progress</span>
-
-              <strong id="progressValue">
-                0%
-              </strong>
-
-              <div class="progress">
-                <i id="missionBar" style="width:0%"></i>
-              </div>
-            </article>
-
-            <article class="metric">
-              <span>Zones Completed</span>
-
-              <strong id="zonesValue">
-                0 / 64
-              </strong>
-
-              <small id="zonesRemaining">
-                64 remaining
-              </small>
-            </article>
-
-            <article class="metric">
-              <span>Estimated Time</span>
-
-              <strong id="remainingTime">
-                --:--:--
-              </strong>
-
-              <small>Until completion</small>
-            </article>
-
-          </div>
-
-        </section>
-
-
-        <!-- LIVE CAMERA -->
-
-        <section class="panel camera-panel">
-
-          <div class="panel-heading">
-
-            <h3>Live Rover Camera</h3>
-
-            <div class="camera-status">
-
-              <span
-                class="dot disconnected-dot"
-                id="cameraStatusDot"
-              ></span>
-
-              <span id="cameraStatusText">
-                Offline
-              </span>
-
-            </div>
-
-          </div>
-
-          <div class="camera-view">
-
-            <img
-              id="roverCamera"
-              alt="Rover camera stream"
-            >
-
-            <div
-              class="camera-placeholder"
-              id="cameraPlaceholder"
-            >
-
-              <div class="camera-placeholder-icon">
-                📷
-              </div>
-
-              <strong>
-                Rover Camera Offline
-              </strong>
-
-              <span>
-                Waiting for camera stream
-              </span>
-
-            </div>
-
-            <div class="camera-overlay">
-
-              <span id="cameraLiveLabel">
-                ● OFFLINE
-              </span>
-
-              <span id="cameraResolution">
-                --
-              </span>
-
-            </div>
-
-          </div>
-
-          <div class="camera-footer">
-
-            <div>
-              <small>Camera</small>
-              <strong id="cameraConnection">
-                Disconnected
-              </strong>
-            </div>
-
-            <div>
-              <small>Stream</small>
-              <strong id="cameraStreamStatus">
-                Waiting
-              </strong>
-            </div>
-
-            <div>
-              <small>Last Frame</small>
-              <strong id="cameraLastFrame">
-                --
-              </strong>
-            </div>
-
-          </div>
-
-        </section>
-        <!-- CURRENT POSITION -->
-
-        <section class="panel zone-panel">
-
-          <div class="panel-heading">
-            <h3>Current Position</h3>
-
-            <span
-              class="badge blue"
-              id="zoneSampleStatus"
-            >
-              Waiting
-            </span>
-          </div>
-
-          <h4 id="zoneTitle">
-            Live Rover
-          </h4>
-
-          <dl class="details">
-
-            <div>
-              <dt>GPS Coordinates</dt>
-              <dd id="zoneGps">
-                Waiting for rover...
-              </dd>
-            </div>
-
-            <div>
-              <dt>Soil Moisture</dt>
-              <dd>
-                <b id="zoneMoisture">--%</b>
-              </dd>
-            </div>
-
-            <div>
-              <dt>Temperature</dt>
-              <dd>
-                <b id="zoneTemperature">-- °C</b>
-              </dd>
-            </div>
-
-            <div>
-              <dt>Humidity</dt>
-              <dd>
-                <b id="zoneHumidity">--%</b>
-              </dd>
-            </div>
-
-            <div>
-              <dt>Roll</dt>
-              <dd>
-                <b id="zoneRoll">--°</b>
-              </dd>
-            </div>
-
-            <div>
-              <dt>Pitch</dt>
-              <dd>
-                <b id="zonePitch">--°</b>
-              </dd>
-            </div>
-
-          </dl>
-
-        </section>
-
-
-        <!-- LIVE NPK -->
-
-        <section class="panel sensor-panel">
-
-          <div class="panel-heading">
-
-            <h3>NPK Real-Time Readings</h3>
-
-            <span class="live-dot">
-              ● Live
-            </span>
-
-          </div>
-
-          <div class="gauges">
-
-            <div class="gauge danger" style="--value:0">
-
-              <div>
-                <strong id="nGauge">--</strong>
-                <small>mg/kg</small>
-              </div>
-
-              <span>Nitrogen</span>
-            </div>
-
-            <div class="gauge danger" style="--value:0">
-
-              <div>
-                <strong id="pGauge">--</strong>
-                <small>mg/kg</small>
-              </div>
-
-              <span>Phosphorus</span>
-            </div>
-
-            <div class="gauge success" style="--value:0">
-
-              <div>
-                <strong id="kGauge">--</strong>
-                <small>mg/kg</small>
-              </div>
-
-              <span>Potassium</span>
-            </div>
-
-          </div>
-
-          <div class="sensor-footer">
-
-            <span>
-
-              <i
-                class="dot disconnected-dot"
-                id="sensorStatusDot"
-              ></i>
-
-              <span id="sensorStatusText">
-                Waiting for data
-              </span>
-
-            </span>
-
-            <span>
-              Depth: 15 cm
-            </span>
-
-            <button
-              class="btn small"
-              id="takeSample"
-            >
-              Take Sample
-            </button>
-
-          </div>
-
-          <div class="data-timestamp">
-
-            <div>
-              <span class="timestamp-label">
-                Last sensor update
-              </span>
-
-              <strong id="sensorTimestamp">
-                No data received
-              </strong>
-            </div>
-
-            <div>
-              <span class="timestamp-label">
-                Data age
-              </span>
-
-              <strong id="sensorDataAge">
-                No data
-              </strong>
-            </div>
-
-          </div>
-
-        </section>
-
-
-        <!-- HEATMAP -->
-
-        <section class="panel heatmap-panel">
-
-          <div class="panel-heading">
-
-            <h3>Nutrient Heatmap</h3>
-
-            <select id="heatmapType">
-              <option value="n">Nitrogen</option>
-              <option value="p">Phosphorus</option>
-              <option value="k">Potassium</option>
-            </select>
-
-          </div>
-
-          <div
-            class="heatmap"
-            id="heatmap"
-          ></div>
-
-          <div class="heat-scale">
-            <span>Low</span>
-            <i></i>
-            <span>High</span>
-          </div>
-
-        </section>
-
-
-        <!-- CROP RECOMMENDATION -->
-
-        <section class="panel crop-panel">
-
-          <div class="panel-heading">
-
-            <h3>Recommended Crop Cultivation</h3>
-
-            <span class="badge green">
-              Recommendation
-            </span>
-
-          </div>
-
-          <div class="crop-best">
-
-            <div class="crop-icon">
-              🌾
-            </div>
-
-            <div>
-              <small>Best Recommended Crop</small>
-
-              <h4 id="bestCrop">
-                --
-              </h4>
-
-              <p id="cropReason">
-                Generate recommendation using soil data.
-              </p>
-            </div>
-
-            <div class="score">
-
-              <strong id="cropScore">
-                --%
-              </strong>
-
-              <small>Suitability</small>
-
-            </div>
-
-          </div>
-
-          <button
-            class="btn primary full"
-            id="generateRecommendation"
-          >
-            Generate Recommendation
-          </button>
-
-        </section>
-
-
-        <!-- PRESCRIPTION -->
-
-        <section class="panel prescription-panel">
-
-          <div class="panel-heading">
-
-            <h3>Fertilizer Prescription</h3>
-
-            <span class="badge blue">
-              Zone-wise
-            </span>
-
-          </div>
-
-          <div class="table-wrap">
-
-            <table>
-
-              <thead>
-                <tr>
-                  <th>Zone</th>
-                  <th>N</th>
-                  <th>P</th>
-                  <th>K</th>
-                  <th>Req. N</th>
-                  <th>Req. P</th>
-                  <th>Req. K</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-
-              <tbody id="prescriptionBody"></tbody>
-
-            </table>
-
-          </div>
-
-          <div class="action-row">
-
-            <button
-              class="btn secondary"
-              id="exportCsv"
-            >
-              Export CSV
-            </button>
-
-            <button
-              class="btn primary"
-              id="approvePrescription"
-            >
-              Approve
-            </button>
-
-          </div>
-
-        </section>
-
-
-        <!-- FERTILIZER CONTROL -->
-
-        <section class="panel control-panel">
-
-          <div class="panel-heading">
-
-            <h3>Fertilizer Control</h3>
-
-            <span
-              class="badge amber"
-              id="pumpStatus"
-            >
-              OFF
-            </span>
-
-          </div>
-
-          <div class="control-stats">
-
-            <div>
-              <small>Current Zone</small>
-              <strong id="controlZone">--</strong>
-            </div>
-
-            <div>
-              <small>Spray Time</small>
-              <strong id="sprayTime">--</strong>
-            </div>
-
-            <div>
-              <small>Progress</small>
-              <strong id="sprayProgress">0%</strong>
-            </div>
-
-          </div>
-
-          <div class="progress large">
-            <i id="sprayBar" style="width:0%"></i>
-          </div>
-
-          <div class="action-row three">
-
-            <button
-              class="btn success"
-              id="startSpray"
-            >
-              Start
-            </button>
-
-            <button
-              class="btn warning"
-              id="pauseSpray"
-            >
-              Pause
-            </button>
-
-            <button
-              class="btn danger"
-              id="stopSpray"
-            >
-              Stop
-            </button>
-
-          </div>
-
-          <div class="valves">
-
-            <button class="valve" data-valve="N">
-              N Valve
-              <b>CLOSED</b>
-            </button>
-
-            <button class="valve" data-valve="P">
-              P Valve
-              <b>CLOSED</b>
-            </button>
-
-            <button class="valve" data-valve="K">
-              K Valve
-              <b>CLOSED</b>
-            </button>
-
-          </div>
-
-        </section>
 
       </div>
+
 
     </section>
 
 
-    <!-- =====================================================
-         FIELD SETUP
-    ====================================================== -->
 
-    <section class="page" id="field">
+    <section class="panel rover-info-panel">
 
-      <div class="page-title">
+
+      <h3>
+        Rover Information
+      </h3>
+
+
+      <div class="rover-info-list">
+
 
         <div>
-          <h2>Field Setup</h2>
 
-          <p>
-            Configure the field grid and mission parameters.
-          </p>
-        </div>
+          <span>
+            Latitude
+          </span>
 
-      </div>
-
-      <section class="panel form-panel">
-
-        <div class="form-grid">
-
-          <label>
-            Field Name
-            <input id="fieldName" value="BRAC Test Field">
-          </label>
-
-          <label>
-            Crop Type
-
-            <select id="cropType">
-              <option>Rice</option>
-              <option>Maize</option>
-              <option>Wheat</option>
-              <option>Mustard</option>
-            </select>
-          </label>
-
-          <label>
-            Rows
-            <input
-              id="fieldRows"
-              type="number"
-              value="8"
-              min="2"
-              max="15"
-            >
-          </label>
-
-          <label>
-            Columns
-            <input
-              id="fieldCols"
-              type="number"
-              value="8"
-              min="2"
-              max="15"
-            >
-          </label>
-
-          <label>
-            Sampling Distance
-            <input type="number" value="1" step="0.1">
-          </label>
-
-          <label>
-            Rover Target Speed
-            <input type="number" value="0.8" step="0.1">
-          </label>
-
-          <label>
-            Target Nitrogen
-            <input type="number" value="45">
-          </label>
-
-          <label>
-            Target Phosphorus
-            <input type="number" value="25">
-          </label>
-
-          <label>
-            Target Potassium
-            <input type="number" value="120">
-          </label>
-
-          <label>
-            Sampling Depth
-            <input type="number" value="15">
-          </label>
-
-        </div>
-
-        <div class="action-row">
-
-          <button
-            class="btn primary"
-            id="generateGrid"
-          >
-            Update Field
-          </button>
-
-        </div>
-
-      </section>
-
-    </section>
-
-
-    <!-- =====================================================
-         LIVE ROVER PAGE
-    ====================================================== -->
-
-    <section class="page" id="liveRover">
-
-      <div class="page-title">
-
-        <div>
-          <h2>Live Rover</h2>
-          <p>Camera, rover position and mission status.</p>
-        </div>
-
-      </div>
-
-      <div class="live-rover-layout">
-
-        <section class="panel">
-
-          <div class="panel-heading">
-
-            <h3>Camera Feed</h3>
-
-            <span id="largeCameraStatus">
-              Offline
-            </span>
-
-          </div>
-
-          <div class="large-camera-view">
-
-            <img
-              id="largeRoverCamera"
-              alt="Rover live camera"
-            >
-
-            <div
-              class="camera-placeholder"
-              id="largeCameraPlaceholder"
-            >
-
-              <div class="camera-placeholder-icon">
-                📷
-              </div>
-
-              <strong>
-                Waiting for rover camera
-              </strong>
-
-              <span>
-                Camera stream will appear here
-              </span>
-
-            </div>
-
-          </div>
-
-        </section>
-
-
-        <section class="panel rover-info-panel">
-
-          <h3>Rover Information</h3>
-
-          <div class="rover-info-list">
-
-            <div>
-              <span>GPS</span>
-              <strong id="liveRoverGps">--</strong>
-            </div>
-
-            <div>
-              <span>Battery</span>
-              <strong id="liveRoverBattery">--%</strong>
-            </div>
-
-            <div>
-              <span>Roll</span>
-              <strong id="liveRoverRoll">--°</strong>
-            </div>
-
-            <div>
-              <span>Pitch</span>
-              <strong id="liveRoverPitch">--°</strong>
-            </div>
-
-            <div>
-              <span>Yaw</span>
-              <strong id="liveRoverYaw">--°</strong>
-            </div>
-
-            <div>
-              <span>Last Packet</span>
-              <strong id="liveRoverLastPacket">--</strong>
-            </div>
-
-          </div>
-
-        </section>
-
-      </div>
-
-    </section>
-    <!-- =====================================================
-         LIVE TELEMETRY PAGE
-    ====================================================== -->
-
-    <section class="page" id="telemetry">
-
-      <div class="page-title">
-
-        <div>
-          <h2>Live Telemetry</h2>
-
-          <p>
-            Real-time rover telemetry received through the Base Station.
-          </p>
-        </div>
-
-        <div class="telemetry-live-status">
-
-          <span
-            class="dot disconnected-dot"
-            id="telemetryStatusDot"
-          ></span>
-
-          <strong id="telemetryStatusText">
-            Waiting for telemetry
+          <strong id="liveRoverLatitude">
+            --
           </strong>
 
         </div>
 
-      </div>
-
-
-      <section class="panel telemetry-info-bar">
 
         <div>
-          <small>Last Packet</small>
-          <strong id="telemetryLastPacket">--</strong>
-        </div>
 
-        <div>
-          <small>Data Age</small>
-          <strong id="telemetryDataAge">--</strong>
-        </div>
-
-        <div>
-          <small>Packet Number</small>
-          <strong id="telemetryPacketNumber">--</strong>
-        </div>
-
-        <div>
-          <small>Rover Status</small>
-          <strong id="telemetryRoverStatus">--</strong>
-        </div>
-
-      </section>
-
-
-      <div class="telemetry-grid">
-
-        <article class="telemetry-card">
-          <span class="telemetry-icon">N</span>
-
-          <div>
-            <small>Nitrogen</small>
-            <strong id="telemetryN">--</strong>
-            <span>mg/kg</span>
-          </div>
-        </article>
-
-
-        <article class="telemetry-card">
-          <span class="telemetry-icon">P</span>
-
-          <div>
-            <small>Phosphorus</small>
-            <strong id="telemetryP">--</strong>
-            <span>mg/kg</span>
-          </div>
-        </article>
-
-
-        <article class="telemetry-card">
-          <span class="telemetry-icon">K</span>
-
-          <div>
-            <small>Potassium</small>
-            <strong id="telemetryK">--</strong>
-            <span>mg/kg</span>
-          </div>
-        </article>
-
-
-        <article class="telemetry-card">
-          <span class="telemetry-icon">💧</span>
-
-          <div>
-            <small>Soil Moisture</small>
-            <strong id="telemetryMoisture">--</strong>
-            <span>%</span>
-          </div>
-        </article>
-
-
-        <article class="telemetry-card">
-          <span class="telemetry-icon">🌡</span>
-
-          <div>
-            <small>Temperature</small>
-            <strong id="telemetryTemperature">--</strong>
-            <span>°C</span>
-          </div>
-        </article>
-
-
-        <article class="telemetry-card">
-          <span class="telemetry-icon">💦</span>
-
-          <div>
-            <small>Humidity</small>
-            <strong id="telemetryHumidity">--</strong>
-            <span>%</span>
-          </div>
-        </article>
-
-
-        <article class="telemetry-card telemetry-gps">
-          <span class="telemetry-icon">📍</span>
-
-          <div>
-            <small>GPS Position</small>
-
-            <strong id="telemetryGps">
-              --
-            </strong>
-
-            <span id="telemetryGpsStatus">
-              Waiting for GPS
-            </span>
-          </div>
-        </article>
-
-
-        <article class="telemetry-card">
-          <span class="telemetry-icon">🔋</span>
-
-          <div>
-            <small>Battery</small>
-            <strong id="telemetryBattery">--</strong>
-            <span>%</span>
-          </div>
-        </article>
-
-      </div>
-
-
-      <section class="panel telemetry-console-panel">
-
-        <div class="panel-heading">
-          <h3>Rover IMU / Motion</h3>
-
-          <span class="badge blue">
-            6-axis telemetry
+          <span>
+            Longitude
           </span>
-        </div>
 
-        <div class="telemetry-grid">
-
-          <article class="telemetry-card">
-            <span class="telemetry-icon">R</span>
-
-            <div>
-              <small>Roll</small>
-              <strong id="telemetryRoll">--</strong>
-              <span>deg</span>
-            </div>
-          </article>
-
-
-          <article class="telemetry-card">
-            <span class="telemetry-icon">P</span>
-
-            <div>
-              <small>Pitch</small>
-              <strong id="telemetryPitch">--</strong>
-              <span>deg</span>
-            </div>
-          </article>
-
-
-          <article class="telemetry-card">
-            <span class="telemetry-icon">Y</span>
-
-            <div>
-              <small>Yaw</small>
-              <strong id="telemetryYaw">--</strong>
-              <span>deg</span>
-            </div>
-          </article>
-
-
-          <article class="telemetry-card">
-            <span class="telemetry-icon">X</span>
-
-            <div>
-              <small>Acceleration X</small>
-              <strong id="telemetryAccX">--</strong>
-              <span>m/s²</span>
-            </div>
-          </article>
-
-
-          <article class="telemetry-card">
-            <span class="telemetry-icon">Y</span>
-
-            <div>
-              <small>Acceleration Y</small>
-              <strong id="telemetryAccY">--</strong>
-              <span>m/s²</span>
-            </div>
-          </article>
-
-
-          <article class="telemetry-card">
-            <span class="telemetry-icon">Z</span>
-
-            <div>
-              <small>Acceleration Z</small>
-              <strong id="telemetryAccZ">--</strong>
-              <span>m/s²</span>
-            </div>
-          </article>
+          <strong id="liveRoverLongitude">
+            --
+          </strong>
 
         </div>
 
-      </section>
-
-
-      <section class="panel telemetry-console-panel">
-
-        <div class="panel-heading">
-
-          <h3>Raw Telemetry Monitor</h3>
-
-          <button
-            class="btn small secondary"
-            id="clearTelemetryConsole"
-          >
-            Clear
-          </button>
-
-        </div>
-
-        <div
-          class="telemetry-console"
-          id="telemetryConsole"
-        >
-          <div class="console-empty">
-            Waiting for rover packets...
-          </div>
-        </div>
-
-      </section>
-
-    </section>
-
-
-    <!-- =====================================================
-         SENSOR HISTORY PAGE
-    ====================================================== -->
-
-    <section class="page" id="sensor">
-
-      <div class="page-title">
 
         <div>
-          <h2>Soil Sensor Data</h2>
 
-          <p>
-            Inspect timestamped environmental and soil readings.
-          </p>
-        </div>
+          <span>
+            Battery
+          </span>
 
-        <button
-          class="btn primary"
-          id="takeSample2"
-        >
-          Take New Sample
-        </button>
-
-      </div>
-
-      <section class="panel">
-
-        <div class="history-toolbar">
-
-          <label>
-            From
-            <input type="date" id="historyFrom">
-          </label>
-
-          <label>
-            To
-            <input type="date" id="historyTo">
-          </label>
-<button
-            class="btn primary"
-            id="filterHistory"
-          >
-            Filter
-          </button>
-
-          <button
-            class="btn secondary"
-            id="resetHistoryFilter"
-          >
-            Reset
-          </button>
-
-          <button
-            class="btn secondary"
-            id="exportHistoryCsv"
-          >
-            Export CSV
-          </button>
+          <strong id="liveRoverBattery">
+            --%
+          </strong>
 
         </div>
 
-        <div
-          class="history-summary"
-          id="historySummary"
-        >
-          No stored samples
-        </div>
-
-        <div class="table-wrap">
-
-          <table>
-
-            <thead>
-              <tr>
-                <th>Date & Time</th>
-                <th>Packet</th>
-                <th>N</th>
-                <th>P</th>
-                <th>K</th>
-                <th>Moisture</th>
-                <th>Temp.</th>
-                <th>Humidity</th>
-                <th>Battery</th>
-                <th>Roll / Pitch / Yaw</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-
-            <tbody id="sensorHistory"></tbody>
-
-          </table>
-
-        </div>
-
-      </section>
-
-    </section>
-
-
-    <!-- =====================================================
-         LARGE HEATMAP
-    ====================================================== -->
-
-    <section
-      class="page"
-      id="nutrientHeatmapPage"
-    >
-
-      <div class="page-title">
 
         <div>
-          <h2>Nutrient Heatmap</h2>
 
-          <p>
-            Zone-wise NPK variation generated from rover measurements.
-          </p>
-        </div>
+          <span>
+            Packet
+          </span>
 
-      </div>
-
-      <section class="panel">
-
-        <div class="large-heatmap-header">
-
-          <select id="largeHeatmapType">
-
-            <option value="n">
-              Nitrogen
-            </option>
-
-            <option value="p">
-              Phosphorus
-            </option>
-
-            <option value="k">
-              Potassium
-            </option>
-
-          </select>
+          <strong id="liveRoverPacket">
+            --
+          </strong>
 
         </div>
 
-        <div
-          class="heatmap large-heatmap"
-          id="largeHeatmap"
-        ></div>
-
-        <div class="heat-scale">
-          <span>Low</span>
-          <i></i>
-          <span>High</span>
-        </div>
-
-      </section>
-
-    </section>
-
-
-    <!-- =====================================================
-         CROP RECOMMENDATION
-    ====================================================== -->
-
-    <section class="page" id="crop">
-
-      <div class="page-title">
 
         <div>
-          <h2>Crop Recommendation</h2>
 
-          <p>
-            Rank crops using current soil and environmental conditions.
-          </p>
+          <span>
+            Status
+          </span>
+
+          <strong id="liveRoverStatus">
+            Waiting
+          </strong>
+
         </div>
 
-      </div>
-
-      <div class="two-column">
-
-        <section class="panel">
-
-          <h3>Recommendation Inputs</h3>
-
-          <div class="form-grid">
-
-            <label>
-              Nitrogen
-              <input id="recN" type="number" value="35">
-            </label>
-
-            <label>
-              Phosphorus
-              <input id="recP" type="number" value="18">
-            </label>
-
-            <label>
-              Potassium
-              <input id="recK" type="number" value="125">
-            </label>
-
-            <label>
-              Soil pH
-              <input id="recPh" type="number" value="6.5" step="0.1">
-            </label>
-
-            <label>
-              Moisture
-              <input id="recMoisture" type="number" value="62">
-            </label>
-
-            <label>
-              Temperature
-              <input id="recTemp" type="number" value="28">
-            </label>
-
-            <label>
-              Humidity
-              <input id="recHumidity" type="number" value="76">
-            </label>
-
-          </div>
-
-          <button
-            class="btn primary full"
-            id="runCropModel"
-          >
-            Generate Recommendation
-          </button>
-
-        </section>
-
-
-        <section class="panel">
-
-          <h3>Recommendation Result</h3>
-
-          <div
-            id="cropResults"
-            class="result-cards"
-          ></div>
-
-        </section>
-
-      </div>
-
-    </section>
-
-
-    <!-- =====================================================
-         PRESCRIPTION
-    ====================================================== -->
-
-    <section class="page" id="prescription">
-
-      <div class="page-title">
 
         <div>
-          <h2>Fertilizer Prescription</h2>
 
-          <p>
-            Review zone-wise fertilizer requirements.
-          </p>
-        </div>
+          <span>
+            Last Update
+          </span>
 
-        <button
-          class="btn primary"
-          id="approvePrescription2"
-        >
-          Approve
-        </button>
-
-      </div>
-
-      <section class="panel">
-
-        <div class="table-wrap">
-
-          <table>
-
-            <thead>
-              <tr>
-                <th>Zone</th>
-                <th>N</th>
-                <th>P</th>
-                <th>K</th>
-                <th>Req. N</th>
-                <th>Req. P</th>
-                <th>Req. K</th>
-                <th>Spray Time</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-
-            <tbody id="prescriptionBody2"></tbody>
-
-          </table>
+          <strong id="liveRoverLastPacket">
+            --
+          </strong>
 
         </div>
 
-      </section>
-
-    </section>
-
-
-    <!-- =====================================================
-         SPRINKLER CONTROL
-    ====================================================== -->
-
-    <section class="page" id="sprinkler">
-
-      <div class="page-title">
 
         <div>
-          <h2>Sprinkler Control</h2>
 
-          <p>
-            Pump and valves connected to the Base Station controller.
-          </p>
+          <span>
+            GPS Status
+          </span>
+
+          <strong id="liveRoverGpsStatus">
+            No Fix
+          </strong>
+
         </div>
 
-      </div>
-
-      <div class="two-column">
-
-        <section class="panel">
-
-          <h3>System Status</h3>
-
-          <div class="control-list">
-
-            <div>
-              <span>Pump</span>
-              <strong id="sprinklerPumpState">OFF</strong>
-            </div>
-
-            <div>
-              <span>Current Zone</span>
-              <strong id="sprinklerZone">--</strong>
-            </div>
-
-            <div>
-              <span>Application Progress</span>
-              <strong id="sprinklerProgress">0%</strong>
-            </div>
-
-          </div>
-
-        </section>
-
-
-        <section class="panel">
-
-          <h3>Manual Valve Control</h3>
-
-          <div class="valves vertical">
-
-            <button class="valve" data-valve="N">
-              N Valve
-              <b>CLOSED</b>
-            </button>
-
-            <button class="valve" data-valve="P">
-              P Valve
-              <b>CLOSED</b>
-            </button>
-
-            <button class="valve" data-valve="K">
-              K Valve
-              <b>CLOSED</b>
-            </button>
-
-            <button class="valve" data-valve="MAIN">
-              Main Valve
-              <b>CLOSED</b>
-            </button>
-
-          </div>
-
-        </section>
 
       </div>
+
 
     </section>
 
 
-    <!-- =====================================================
-         MANUAL ROVER CONTROL
-    ====================================================== -->
+  </div>
 
-    <section class="page" id="manual">
 
-      <div class="page-title">
+</section>
+
+
+
+<!-- =====================================================
+     LIVE TELEMETRY
+===================================================== -->
+
+<section
+  class="page"
+  id="telemetry"
+>
+
+
+  <div class="page-title">
+
+
+    <div>
+
+      <h2>
+        Live Telemetry
+      </h2>
+
+      <p>
+        Real-time rover sensor, GPS and motion telemetry.
+      </p>
+
+    </div>
+
+
+    <div class="telemetry-live-status">
+
+
+      <span
+        class="dot disconnected-dot"
+        id="telemetryStatusDot"
+      ></span>
+
+
+      <strong id="telemetryStatusText">
+        Waiting for telemetry
+      </strong>
+
+
+    </div>
+
+
+  </div>
+
+
+
+  <section class="panel telemetry-info-bar">
+
+
+    <div>
+
+      <small>
+        Last Packet
+      </small>
+
+      <strong id="telemetryLastPacket">
+        --
+      </strong>
+
+    </div>
+
+
+    <div>
+
+      <small>
+        Data Age
+      </small>
+
+      <strong id="telemetryDataAge">
+        --
+      </strong>
+
+    </div>
+
+
+    <div>
+
+      <small>
+        Packet Number
+      </small>
+
+      <strong id="telemetryPacketNumber">
+        --
+      </strong>
+
+    </div>
+
+
+    <div>
+
+      <small>
+        Rover Status
+      </small>
+
+      <strong id="telemetryRoverStatus">
+        --
+      </strong>
+
+    </div>
+
+
+  </section>
+
+
+
+  <div class="telemetry-grid">
+
+
+    <article class="telemetry-card">
+
+      <span class="telemetry-icon">
+        N
+      </span>
+
+      <div>
+
+        <small>
+          Nitrogen
+        </small>
+
+        <strong id="telemetryN">
+          --
+        </strong>
+
+        <span>
+          mg/kg
+        </span>
+
+      </div>
+
+    </article>
+
+
+
+    <article class="telemetry-card">
+
+      <span class="telemetry-icon">
+        P
+      </span>
+
+      <div>
+
+        <small>
+          Phosphorus
+        </small>
+
+        <strong id="telemetryP">
+          --
+        </strong>
+
+        <span>
+          mg/kg
+        </span>
+
+      </div>
+
+    </article>
+
+
+
+    <article class="telemetry-card">
+
+      <span class="telemetry-icon">
+        K
+      </span>
+
+      <div>
+
+        <small>
+          Potassium
+        </small>
+
+        <strong id="telemetryK">
+          --
+        </strong>
+
+        <span>
+          mg/kg
+        </span>
+
+      </div>
+
+    </article>
+
+
+
+    <article class="telemetry-card">
+
+      <span class="telemetry-icon">
+        💧
+      </span>
+
+      <div>
+
+        <small>
+          Soil Moisture
+        </small>
+
+        <strong id="telemetryMoisture">
+          --
+        </strong>
+
+        <span>
+          %
+        </span>
+
+      </div>
+
+    </article>
+
+
+
+    <article class="telemetry-card">
+
+      <span class="telemetry-icon">
+        🌡
+      </span>
+
+      <div>
+
+        <small>
+          Temperature
+        </small>
+
+        <strong id="telemetryTemperature">
+          --
+        </strong>
+
+        <span>
+          °C
+        </span>
+
+      </div>
+
+    </article>
+
+
+
+    <article class="telemetry-card">
+
+      <span class="telemetry-icon">
+        💦
+      </span>
+
+      <div>
+
+        <small>
+          Humidity
+        </small>
+
+        <strong id="telemetryHumidity">
+          --
+        </strong>
+
+        <span>
+          %
+        </span>
+
+      </div>
+
+    </article>
+
+
+
+    <article class="telemetry-card telemetry-gps">
+
+      <span class="telemetry-icon">
+        📍
+      </span>
+
+      <div>
+
+        <small>
+          GPS
+        </small>
+
+        <strong id="telemetryGps">
+          --
+        </strong>
+
+        <span id="telemetryGpsStatus">
+          Waiting for GPS
+        </span>
+
+      </div>
+
+    </article>
+
+
+
+    <article class="telemetry-card">
+
+      <span class="telemetry-icon">
+        🔋
+      </span>
+
+      <div>
+
+        <small>
+          Battery
+        </small>
+
+        <strong id="telemetryBattery">
+          --%
+        </strong>
+
+        <span>
+          Rover battery
+        </span>
+
+      </div>
+
+    </article>
+
+
+  </div>
+
+
+
+  <!-- IMU -->
+
+  <section class="panel imu-section">
+
+
+    <div class="panel-heading">
+
+      <h3>
+        Rover IMU / Motion
+      </h3>
+
+      <span class="badge blue">
+        Live
+      </span>
+
+    </div>
+
+
+    <div class="imu-grid">
+
+
+      <article class="imu-card">
+
+        <span class="imu-icon">
+          R
+        </span>
 
         <div>
-          <h2>Manual Rover Control</h2>
 
-          <p>
-            Manual override for testing and controlled operation.
-          </p>
-        </div>
+          <small>
+            Roll
+          </small>
 
-      </div>
+          <strong id="telemetryRoll">
+            --
+          </strong>
 
-      <section class="panel manual-card">
-
-        <div class="dpad">
-
-          <button data-command="Forward">▲</button>
-          <button data-command="Left">◀</button>
-
-          <button
-            data-command="Stop"
-            class="stop"
-          >
-            ■
-          </button>
-
-          <button data-command="Right">▶</button>
-          <button data-command="Backward">▼</button>
+          <span class="unit">
+            degrees
+          </span>
 
         </div>
 
-        <div class="manual-info">
-
-          <h3>Command Log</h3>
-
-          <p id="manualCommand">
-            No manual command sent.
-          </p>
-
-          <label>
-            Speed
-
-            <input
-              id="manualSpeed"
-              type="range"
-              min="0"
-              max="1"
-              value="0.5"
-              step="0.1"
-            >
-
-            <span id="manualSpeedValue">
-              0.5 m/s
-            </span>
-          </label>
-
-          <button
-            class="btn danger full"
-            id="manualStop"
-          >
-            Motor Stop
-          </button>
-
-        </div>
-
-      </section>
-
-    </section>
+      </article>
 
 
-    <!-- =====================================================
-         MISSION HISTORY
-    ====================================================== -->
 
-    <section class="page" id="history">
+      <article class="imu-card">
 
-      <div class="page-title">
+        <span class="imu-icon">
+          P
+        </span>
 
         <div>
-          <h2>Mission History</h2>
 
-          <p>
-            Review saved missions and measurements.
-          </p>
-        </div>
+          <small>
+            Pitch
+          </small>
 
-      </div>
+          <strong id="telemetryPitch">
+            --
+          </strong>
 
-      <section class="panel">
-
-        <div class="table-wrap">
-
-          <table>
-
-            <thead>
-              <tr>
-                <th>Mission</th>
-                <th>Field</th>
-                <th>Crop</th>
-                <th>Samples</th>
-                <th>Status</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-
-            <tbody>
-
-              <tr>
-                <td>Current Mission</td>
-                <td id="historyFieldName">
-                  BRAC Test Field
-                </td>
-
-                <td id="historyCropName">
-                  Rice
-                </td>
-
-                <td id="historySampleCount">
-                  0
-                </td>
-
-                <td>
-                  <span class="badge blue">
-                    Local
-                  </span>
-                </td>
-
-                <td>
-                  <button
-                    class="btn small"
-                    id="openCurrentHistory"
-                  >
-                    View Data
-                  </button>
-                </td>
-              </tr>
-
-            </tbody>
-
-          </table>
+          <span class="unit">
+            degrees
+          </span>
 
         </div>
 
-      </section>
-
-    </section>
+      </article>
 
 
-    <!-- =====================================================
-         ALERTS
-    ====================================================== -->
 
-    <section class="page" id="alerts">
+      <article class="imu-card">
 
-      <div class="page-title">
+        <span class="imu-icon">
+          Y
+        </span>
 
         <div>
-          <h2>Alerts & Logs</h2>
 
-          <p>
-            Communication, mission and hardware events.
-          </p>
+          <small>
+            Yaw
+          </small>
+
+          <strong id="telemetryYaw">
+            --
+          </strong>
+
+          <span class="unit">
+            degrees
+          </span>
+
         </div>
 
-        <button
-          class="btn secondary"
-          id="clearAlerts"
-        >
-          Clear Alerts
-        </button>
+      </article>
 
-      </div>
 
-      <section class="panel">
 
-        <div
-          class="alerts-list expanded"
-          id="allAlerts"
-        ></div>
+      <article class="imu-card">
 
-      </section>
+        <span class="imu-icon">
+          AX
+        </span>
 
-    </section>
+        <div>
+
+          <small>
+            Acceleration X
+          </small>
+
+          <strong id="telemetryAccX">
+            --
+          </strong>
+
+          <span class="unit">
+            m/s²
+          </span>
+
+        </div>
+
+      </article>
+
+
+
+      <article class="imu-card">
+
+        <span class="imu-icon">
+          AY
+        </span>
+
+        <div>
+
+          <small>
+            Acceleration Y
+          </small>
+
+          <strong id="telemetryAccY">
+            --
+          </strong>
+
+          <span class="unit">
+            m/s²
+          </span>
+
+        </div>
+
+      </article>
+
+
+
+      <article class="imu-card">
+
+        <span class="imu-icon">
+          AZ
+        </span>
+
+        <div>
+
+          <small>
+            Acceleration Z
+          </small>
+
+          <strong id="telemetryAccZ">
+            --
+          </strong>
+
+          <span class="unit">
+            m/s²
+          </span>
+
+        </div>
+
+      </article>
+
+
+    </div>
+
+
+  </section>
+
+
+
+  <!-- RADIO -->
+
+  <section class="panel telemetry-secondary">
+
+
+    <div>
+
+      <small>
+        LoRa RSSI
+      </small>
+
+      <strong id="telemetryRssi">
+        --
+      </strong>
+
+    </div>
+
+
+    <div>
+
+      <small>
+        LoRa SNR
+      </small>
+
+      <strong id="telemetrySnr">
+        --
+      </strong>
+
+    </div>
+
+
+  </section>
+
+
+
+  <!-- RAW -->
+
+  <section class="panel telemetry-console-panel">
+
+
+    <div class="panel-heading">
+
+      <h3>
+        Raw Telemetry Monitor
+      </h3>
+
+      <button
+        class="btn small secondary"
+        id="clearTelemetryConsole"
+      >
+        Clear
+      </button>
+
+    </div>
 
 
     <div
-      class="toast"
-      id="toast"
+      class="telemetry-console"
+      id="telemetryConsole"
+    >
+
+      <div class="console-empty">
+        Waiting for rover packets...
+      </div>
+
+    </div>
+
+
+  </section>
+
+
+</section>
+
+
+
+<!-- =====================================================
+     SENSOR HISTORY
+===================================================== -->
+
+<section
+  class="page"
+  id="sensor"
+>
+
+
+  <div class="page-title">
+
+
+    <div>
+
+      <h2>
+        Soil Sensor Data
+      </h2>
+
+      <p>
+        Timestamped rover measurements.
+      </p>
+
+    </div>
+
+
+    <button
+      class="btn primary"
+      id="takeSample2"
+    >
+      Take New Sample
+    </button>
+
+
+  </div>
+
+
+  <section class="panel">
+
+
+    <div class="history-toolbar">
+
+
+      <label>
+
+        From
+
+        <input
+          type="date"
+          id="historyFrom"
+        >
+
+      </label>
+
+
+      <label>
+
+        To
+
+        <input
+          type="date"
+          id="historyTo"
+        >
+
+      </label>
+
+
+      <button
+        class="btn primary"
+        id="filterHistory"
+      >
+        Filter
+      </button>
+
+
+      <button
+        class="btn secondary"
+        id="resetHistoryFilter"
+      >
+        Reset
+      </button>
+
+
+      <button
+        class="btn secondary"
+        id="exportHistoryCsv"
+      >
+        Export CSV
+      </button>
+
+
+    </div>
+
+
+    <div
+      class="history-summary"
+      id="historySummary"
+    >
+      No stored samples
+    </div>
+
+
+    <div class="table-wrap">
+
+
+      <table>
+
+
+        <thead>
+
+        <tr>
+
+          <th>Date & Time</th>
+          <th>Packet</th>
+          <th>N</th>
+          <th>P</th>
+          <th>K</th>
+          <th>Moisture</th>
+          <th>Temp.</th>
+          <th>Humidity</th>
+          <th>Battery</th>
+          <th>Action</th>
+
+        </tr>
+
+        </thead>
+
+
+        <tbody id="sensorHistory"></tbody>
+
+
+      </table>
+
+
+    </div>
+
+
+  </section>
+
+
+</section>
+
+
+
+<!-- =====================================================
+     HEATMAP PAGE
+===================================================== -->
+
+<section
+  class="page"
+  id="nutrientHeatmapPage"
+>
+
+
+  <div class="page-title">
+
+    <div>
+
+      <h2>
+        Nutrient Mapping
+      </h2>
+
+      <p>
+        GPS-referenced nutrient measurements can be used for spatial mapping.
+      </p>
+
+    </div>
+
+  </div>
+
+
+  <section class="panel">
+
+    <div class="heatmap-placeholder large-placeholder">
+
+      GPS-based nutrient heatmap will be generated
+      from recorded latitude, longitude and NPK values.
+
+    </div>
+
+  </section>
+
+
+</section>
+
+
+
+<!-- =====================================================
+     CROP
+===================================================== -->
+
+<section
+  class="page"
+  id="crop"
+>
+
+
+  <div class="page-title">
+
+    <div>
+
+      <h2>
+        Crop Recommendation
+      </h2>
+
+      <p>
+        Recommendation based on current soil and environmental readings.
+      </p>
+
+    </div>
+
+  </div>
+
+
+  <div class="two-column">
+
+
+    <section class="panel">
+
+
+      <div class="form-grid">
+
+
+        <label>
+
+          Nitrogen
+
+          <input
+            id="recN"
+            type="number"
+          >
+
+        </label>
+
+
+        <label>
+
+          Phosphorus
+
+          <input
+            id="recP"
+            type="number"
+          >
+
+        </label>
+
+
+        <label>
+
+          Potassium
+
+          <input
+            id="recK"
+            type="number"
+          >
+
+        </label>
+
+
+        <label>
+
+          Moisture
+
+          <input
+            id="recMoisture"
+            type="number"
+          >
+
+        </label>
+
+
+        <label>
+
+          Temperature
+
+          <input
+            id="recTemp"
+            type="number"
+          >
+
+        </label>
+
+
+        <label>
+
+          Humidity
+
+          <input
+            id="recHumidity"
+            type="number"
+          >
+
+        </label>
+
+
+      </div>
+
+
+      <button
+        class="btn primary full"
+        id="runCropModel"
+      >
+        Generate Recommendation
+      </button>
+
+
+    </section>
+
+
+
+    <section class="panel">
+
+
+      <div
+        id="cropResults"
+        class="result-cards"
+      ></div>
+
+
+    </section>
+
+
+  </div>
+
+
+</section>
+
+
+
+<!-- =====================================================
+     PRESCRIPTION
+===================================================== -->
+
+<section
+  class="page"
+  id="prescription"
+>
+
+
+  <div class="page-title">
+
+    <div>
+
+      <h2>
+        Fertilizer Prescription
+      </h2>
+
+      <p>
+        Fertilizer recommendation functionality can be expanded here.
+      </p>
+
+    </div>
+
+  </div>
+
+
+  <section class="panel">
+
+    <div class="empty-state">
+      Waiting for prescription calculations.
+    </div>
+
+  </section>
+
+
+</section>
+
+
+
+<!-- =====================================================
+     SPRINKLER
+===================================================== -->
+
+<section
+  class="page"
+  id="sprinkler"
+>
+
+
+  <div class="page-title">
+
+    <div>
+
+      <h2>
+        Sprinkler Control
+      </h2>
+
+      <p>
+        Pump and valve control at the Base Station.
+      </p>
+
+    </div>
+
+  </div>
+
+
+  <section class="panel">
+
+
+    <div class="valves vertical">
+
+
+      <button
+        class="valve"
+        data-valve="N"
+      >
+        N Valve
+        <b>CLOSED</b>
+      </button>
+
+
+      <button
+        class="valve"
+        data-valve="P"
+      >
+        P Valve
+        <b>CLOSED</b>
+      </button>
+
+
+      <button
+        class="valve"
+        data-valve="K"
+      >
+        K Valve
+        <b>CLOSED</b>
+      </button>
+
+
+    </div>
+
+
+  </section>
+
+
+</section>
+
+
+
+<!-- =====================================================
+     MANUAL
+===================================================== -->
+
+<section
+  class="page"
+  id="manual"
+>
+
+
+  <div class="page-title">
+
+    <div>
+
+      <h2>
+        Manual Rover Control
+      </h2>
+
+      <p>
+        Manual override for rover testing.
+      </p>
+
+    </div>
+
+  </div>
+
+
+  <section class="panel manual-card">
+
+
+    <div class="dpad">
+
+
+      <button data-command="Forward">
+        ▲
+      </button>
+
+
+      <button data-command="Left">
+        ◀
+      </button>
+
+
+      <button
+        data-command="Stop"
+        class="stop"
+      >
+        ■
+      </button>
+
+
+      <button data-command="Right">
+        ▶
+      </button>
+
+
+      <button data-command="Backward">
+        ▼
+      </button>
+
+
+    </div>
+
+
+    <div class="manual-info">
+
+
+      <h3>
+        Command Log
+      </h3>
+
+
+      <p id="manualCommand">
+        No manual command sent.
+      </p>
+
+
+      <label>
+
+        Speed
+
+        <input
+          id="manualSpeed"
+          type="range"
+          min="0"
+          max="1"
+          value="0.5"
+          step="0.1"
+        >
+
+        <span id="manualSpeedValue">
+          0.5 m/s
+        </span>
+
+      </label>
+
+
+      <button
+        class="btn danger full"
+        id="manualStop"
+      >
+        Stop Rover
+      </button>
+
+
+    </div>
+
+
+  </section>
+
+
+</section>
+
+
+
+<!-- =====================================================
+     HISTORY
+===================================================== -->
+
+<section
+  class="page"
+  id="history"
+>
+
+
+  <div class="page-title">
+
+    <div>
+
+      <h2>
+        Mission History
+      </h2>
+
+      <p>
+        Stored telemetry from the current mission.
+      </p>
+
+    </div>
+
+  </div>
+
+
+  <section class="panel">
+
+
+    <p>
+      Stored samples:
+      <strong id="historySampleCount">
+        0
+      </strong>
+    </p>
+
+
+    <button
+      class="btn primary"
+      id="openCurrentHistory"
+    >
+      View Sensor History
+    </button>
+
+
+  </section>
+
+
+</section>
+
+
+
+<!-- =====================================================
+     ALERTS
+===================================================== -->
+
+<section
+  class="page"
+  id="alerts"
+>
+
+
+  <div class="page-title">
+
+
+    <div>
+
+      <h2>
+        Alerts & Logs
+      </h2>
+
+      <p>
+        Base station and rover system events.
+      </p>
+
+    </div>
+
+
+    <button
+      class="btn secondary"
+      id="clearAlerts"
+    >
+      Clear Alerts
+    </button>
+
+
+  </div>
+
+
+  <section class="panel">
+
+    <div
+      class="alerts-list expanded"
+      id="allAlerts"
     ></div>
 
-  </main>
+  </section>
+
+
+</section>
+
+
+
+<div
+  class="toast"
+  id="toast"
+></div>
+
+
+</main>
 
 </div>
 
-<script src="app.js?v=8"></script>
+
+<!-- LEAFLET JS -->
+
+<script
+  src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+></script>
+
+
+<!-- APP -->
+
+<script src="app.js?v=10"></script>
+
 
 </body>
+
 </html>
