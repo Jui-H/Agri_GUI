@@ -1,59 +1,80 @@
 /* =========================================================
-   AGRIROVER FRONTEND
-   VERSION 8
-   FINAL 16-FIELD TELEMETRY FORMAT
+   AGRIROVER
+   LIVE GPS MAP + 16 FIELD TELEMETRY
 ========================================================= */
 
 
 /* =========================================================
-   GLOBAL STATE
+   STATE
 ========================================================= */
 
 const state = {
-  running: false,
+
   paused: false,
+
   emergency: false,
 
-  battery: 0,
+  battery: 0
 
-  rows: 8,
-  cols: 8,
-  totalZones: 64,
-
-  sprayProgress: 0
 };
 
 
-/* =========================================================
-   SERIAL / BASE STATION
-========================================================= */
-
 let serialPort = null;
+
 let serialReader = null;
+
 let serialBuffer = "";
 
-let baseStationConnected = false;
+let baseStationConnected =
+  false;
 
-let lastRoverPacketAt = null;
-let lastSensorUpdate = null;
 
-let latestTelemetry = null;
+let latestTelemetry =
+  null;
+
+
+let lastRoverPacketAt =
+  null;
+
+
+let lastSensorUpdate =
+  null;
 
 
 /* =========================================================
-   CAMERA
+   MAP VARIABLES
 ========================================================= */
 
-let cameraStreamUrl = "";
+let roverMap =
+  null;
 
 
-/* =========================================================
-   HEATMAP
-========================================================= */
+let largeRoverMap =
+  null;
 
-const liveZoneData = new Map();
 
-let selectedHeatmapNutrient = "n";
+let roverMarker =
+  null;
+
+
+let largeRoverMarker =
+  null;
+
+
+let roverTrackLine =
+  null;
+
+
+let largeRoverTrackLine =
+  null;
+
+
+let roverGpsHistory =
+  [];
+
+
+let mapHasCenteredOnce =
+  false;
 
 
 /* =========================================================
@@ -61,7 +82,7 @@ let selectedHeatmapNutrient = "n";
 ========================================================= */
 
 const STORAGE_KEY =
-  "agriroverSensorHistoryV8";
+  "agriroverTelemetryV10";
 
 
 function loadHistory() {
@@ -73,6 +94,7 @@ function loadHistory() {
         STORAGE_KEY
       );
 
+
     return saved
       ? JSON.parse(saved)
       : [];
@@ -82,12 +104,14 @@ function loadHistory() {
   catch (error) {
 
     console.error(
-      "History load error:",
       error
     );
 
+
     return [];
+
   }
+
 }
 
 
@@ -96,35 +120,42 @@ let sensorRows =
 
 
 /* =========================================================
-   PRESCRIPTION DATA
+   ALERTS
 ========================================================= */
 
-let prescriptions = [];
+let systemAlerts =
+  [];
 
 
 /* =========================================================
-   ALERT DATA
-========================================================= */
-
-let systemAlerts = [];
-
-
-/* =========================================================
-   SAFE DOM HELPER
+   DOM HELPERS
 ========================================================= */
 
 function el(id) {
-  return document.getElementById(id);
+
+  return document.getElementById(
+    id
+  );
+
 }
 
 
-function setText(id, value) {
+function setText(
+  id,
+  value
+) {
 
   const element =
     el(id);
 
-  if (element) {
-    element.textContent = value;
+
+  if (
+    element
+  ) {
+
+    element.textContent =
+      value;
+
   }
 
 }
@@ -134,23 +165,31 @@ function setText(id, value) {
    TOAST
 ========================================================= */
 
-function toast(message) {
+function toast(
+  message
+) {
 
   const box =
     el("toast");
 
-  if (!box) return;
+
+  if (!box)
+    return;
+
 
   box.textContent =
     message;
+
 
   box.classList.add(
     "show"
   );
 
+
   clearTimeout(
     box.timer
   );
+
 
   box.timer =
     setTimeout(
@@ -161,17 +200,19 @@ function toast(message) {
         );
 
       },
-      2600
+      2500
     );
+
 }
 
 
 /* =========================================================
-   TIME FORMAT
+   TIMESTAMP
 ========================================================= */
 
 function formatTimestamp(
-  value = new Date()
+  value =
+    new Date()
 ) {
 
   const date =
@@ -179,20 +220,35 @@ function formatTimestamp(
       ? value
       : new Date(value);
 
+
   return date.toLocaleString(
     "en-GB",
     {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
 
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
+      day:
+        "2-digit",
 
-      hour12: true
+      month:
+        "short",
+
+      year:
+        "numeric",
+
+      hour:
+        "2-digit",
+
+      minute:
+        "2-digit",
+
+      second:
+        "2-digit",
+
+      hour12:
+        true
+
     }
   );
+
 }
 
 
@@ -204,8 +260,10 @@ function updateClock() {
 
   setText(
     "clockText",
-    new Date().toLocaleString()
+    new Date()
+      .toLocaleString()
   );
+
 }
 
 
@@ -214,6 +272,7 @@ setInterval(
   1000
 );
 
+
 updateClock();
 
 
@@ -221,134 +280,172 @@ updateClock();
    NAVIGATION
 ========================================================= */
 
-function navigate(pageId) {
+function navigate(
+  pageId
+) {
 
   document
-    .querySelectorAll(".page")
-    .forEach(page => {
+    .querySelectorAll(
+      ".page"
+    )
+    .forEach(
+      page => {
 
-      page.classList.remove(
-        "active"
-      );
+        page.classList.remove(
+          "active"
+        );
 
-    });
+      }
+    );
 
 
   document
-    .querySelectorAll(".nav-item")
-    .forEach(item => {
+    .querySelectorAll(
+      ".nav-item"
+    )
+    .forEach(
+      item => {
 
-      item.classList.remove(
-        "active"
-      );
+        item.classList.remove(
+          "active"
+        );
 
-    });
+      }
+    );
 
 
-  const page =
-    el(pageId);
-
-  if (page) {
-
-    page.classList.add(
+  el(pageId)
+    ?.classList
+    .add(
       "active"
     );
 
-  }
 
-
-  const nav =
-    document.querySelector(
+  document
+    .querySelector(
       `.nav-item[data-page="${pageId}"]`
-    );
-
-  if (nav) {
-
-    nav.classList.add(
+    )
+    ?.classList
+    .add(
       "active"
     );
 
-  }
 
-
-  const sidebar =
-    el("sidebar");
-
-  if (sidebar) {
-
-    sidebar.classList.remove(
+  el("sidebar")
+    ?.classList
+    .remove(
       "open"
     );
 
-  }
+
+  /*
+     Leaflet maps are sometimes created
+     while hidden.
+
+     invalidateSize() fixes them after
+     opening their page.
+  */
+
+  setTimeout(
+    () => {
+
+      if (
+        pageId ===
+        "dashboard"
+      ) {
+
+        roverMap
+          ?.invalidateSize();
+
+      }
+
+
+      if (
+        pageId ===
+        "liveRover"
+      ) {
+
+        largeRoverMap
+          ?.invalidateSize();
+
+      }
+
+    },
+    120
+  );
+
 }
 
 
 document
-  .querySelectorAll(".nav-item")
-  .forEach(button => {
+  .querySelectorAll(
+    ".nav-item"
+  )
+  .forEach(
+    button => {
 
-    button.onclick =
-      () =>
-        navigate(
-          button.dataset.page
-        );
+      button.onclick =
+        () =>
+          navigate(
+            button.dataset.page
+          );
 
-  });
+    }
+  );
 
 
-if (el("menuBtn")) {
-
-  el("menuBtn").onclick =
+el("menuBtn")
+  ?.addEventListener(
+    "click",
     () => {
 
       el("sidebar")
         ?.classList
-        .toggle("open");
+        .toggle(
+          "open"
+        );
 
-    };
-}
+    }
+  );
 
 
 /* =========================================================
-   CONNECT BASE STATION
+   SERIAL CONNECT
 ========================================================= */
 
 async function connectBaseStation() {
 
-  if (baseStationConnected) {
+  if (
+    baseStationConnected
+  ) {
 
     await disconnectBaseStation();
 
     return;
+
   }
 
 
-  if (!("serial" in navigator)) {
+  if (
+    !("serial" in navigator)
+  ) {
 
     alert(
-      "Web Serial is not supported.\n\n" +
-      "Please use desktop Google Chrome or Microsoft Edge."
+      "Web Serial is not supported.\nUse desktop Chrome or Edge."
     );
 
     return;
+
   }
 
 
   try {
 
-    console.log(
-      "Requesting serial port..."
-    );
-
-
     serialPort =
-      await navigator.serial.requestPort();
+      await navigator
+        .serial
+        .requestPort();
 
-
-    /*
-      Small Windows delay before opening.
-    */
 
     await new Promise(
       resolve =>
@@ -359,18 +456,23 @@ async function connectBaseStation() {
     );
 
 
-    console.log(
-      "Opening serial port..."
-    );
-
-
     await serialPort.open({
-      baudRate: 115200,
-      dataBits: 8,
-      stopBits: 1,
-      parity: "none",
-      flowControl: "none",
-      bufferSize: 255
+
+      baudRate:
+        115200,
+
+      dataBits:
+        8,
+
+      stopBits:
+        1,
+
+      parity:
+        "none",
+
+      flowControl:
+        "none"
+
     });
 
 
@@ -378,15 +480,8 @@ async function connectBaseStation() {
       true;
 
 
-    updateBaseStationStatus(
+    updateBaseStatus(
       true
-    );
-
-
-    addAlert(
-      "success",
-      "Base station connected",
-      "USB serial connection established"
     );
 
 
@@ -395,8 +490,14 @@ async function connectBaseStation() {
     );
 
 
-    console.log(
-      "Serial port opened successfully."
+    addAlert(
+
+      "success",
+
+      "Base station connected",
+
+      "USB serial connection established"
+
     );
 
 
@@ -407,73 +508,34 @@ async function connectBaseStation() {
   catch (error) {
 
     console.error(
-      "Base station connection error:",
       error
     );
 
 
-    baseStationConnected =
-      false;
-
-
-    updateBaseStationStatus(
+    updateBaseStatus(
       false
     );
 
 
-    if (
-      error.name ===
-      "NotFoundError"
-    ) {
-
-      toast(
-        "No serial port selected"
-      );
-
-    }
-
-    else if (
-      error.name ===
-      "InvalidStateError"
-    ) {
-
-      toast(
-        "Serial port is already open"
-      );
-
-    }
-
-    else {
-
-      toast(
-        `Connection failed: ${
-          error.message ||
-          error.name
-        }`
-      );
-
-    }
-
-
-    addAlert(
-      "error",
-      "Base station connection failed",
-      error.message ||
-      error.name
+    toast(
+      `Connection failed: ${
+        error.message ||
+        error.name
+      }`
     );
+
   }
+
 }
 
-
-/* =========================================================
-   DISCONNECT BASE STATION
-========================================================= */
 
 async function disconnectBaseStation() {
 
   try {
 
-    if (serialReader) {
+    if (
+      serialReader
+    ) {
 
       await serialReader.cancel();
 
@@ -484,18 +546,20 @@ async function disconnectBaseStation() {
   catch (error) {
 
     console.log(
-      "Reader cancel:",
       error
     );
 
   }
 
 
+  serialReader =
+    null;
+
+
   try {
 
     if (
-      serialPort &&
-      serialPort.readable === null
+      serialPort
     ) {
 
       await serialPort.close();
@@ -507,72 +571,74 @@ async function disconnectBaseStation() {
   catch (error) {
 
     console.log(
-      "Port close:",
       error
     );
 
   }
 
 
-  serialReader = null;
-  serialPort = null;
+  serialPort =
+    null;
+
 
   baseStationConnected =
     false;
 
 
-  updateBaseStationStatus(
+  updateBaseStatus(
     false
   );
 
-
-  toast(
-    "Base Station disconnected"
-  );
 }
 
 
-/* =========================================================
-   BASE STATUS UI
-========================================================= */
-
-function updateBaseStationStatus(
+function updateBaseStatus(
   connected
 ) {
 
   const dot =
-    el("baseStatusDot");
+    el(
+      "baseStatusDot"
+    );
 
-  const text =
-    el("baseStatusText");
 
   const button =
-    el("connectBaseStation");
-
-
-  if (connected) {
-
-    dot?.classList.remove(
-      "disconnected-dot"
-    );
-
-    dot?.classList.add(
-      "connected-dot"
+    el(
+      "connectBaseStation"
     );
 
 
-    if (text) {
+  if (
+    connected
+  ) {
 
-      text.textContent =
-        "Connected";
+    dot
+      ?.classList
+      .remove(
+        "disconnected-dot"
+      );
 
-    }
+
+    dot
+      ?.classList
+      .add(
+        "connected-dot"
+      );
 
 
-    if (button) {
+    setText(
+      "baseStatusText",
+      "Connected"
+    );
+
+
+    if (
+      button
+    ) {
 
       button.textContent =
         "✓ Connected";
+
 
       button.classList.add(
         "connected"
@@ -584,72 +650,50 @@ function updateBaseStationStatus(
 
   else {
 
-    dot?.classList.remove(
-      "connected-dot"
+    dot
+      ?.classList
+      .remove(
+        "connected-dot"
+      );
+
+
+    dot
+      ?.classList
+      .add(
+        "disconnected-dot"
+      );
+
+
+    setText(
+      "baseStatusText",
+      "Disconnected"
     );
 
-    dot?.classList.add(
-      "disconnected-dot"
-    );
 
-
-    if (text) {
-
-      text.textContent =
-        "Disconnected";
-
-    }
-
-
-    if (button) {
+    if (
+      button
+    ) {
 
       button.textContent =
         "🔌 Connect";
+
 
       button.classList.remove(
         "connected"
       );
 
     }
+
   }
+
 }
 
 
-if (el("connectBaseStation")) {
-
-  el("connectBaseStation").onclick =
-    connectBaseStation;
-}
-
-
-/* =========================================================
-   USB DISCONNECT EVENT
-========================================================= */
-
-if (
-  navigator.serial
-) {
-
-  navigator.serial.addEventListener(
-    "disconnect",
-    () => {
-
-      baseStationConnected =
-        false;
-
-      serialPort = null;
-
-      updateBaseStationStatus(
-        false
-      );
-
-      toast(
-        "Base Station disconnected"
-      );
-
-    }
+el("connectBaseStation")
+  ?.addEventListener(
+    "click",
+    connectBaseStation
   );
-}
 
 
 /* =========================================================
@@ -670,7 +714,9 @@ async function readSerialLoop() {
     ) {
 
       serialReader =
-        serialPort.readable.getReader();
+        serialPort
+          .readable
+          .getReader();
 
 
       try {
@@ -684,21 +730,24 @@ async function readSerialLoop() {
             await serialReader.read();
 
 
-          if (done) {
+          if (
+            done
+          )
             break;
-          }
 
 
-          if (!value) {
+          if (
+            !value
+          )
             continue;
-          }
 
 
           serialBuffer +=
             decoder.decode(
               value,
               {
-                stream: true
+                stream:
+                  true
               }
             );
 
@@ -722,42 +771,38 @@ async function readSerialLoop() {
               rawLine.trim();
 
 
-            if (!line) {
+            if (
+              !line
+            )
               continue;
-            }
 
-
-            /*
-              EVERYTHING is shown in raw monitor.
-            */
 
             addTelemetryConsoleLine(
               line
             );
 
 
-            /*
-              Then relevant lines are parsed.
-            */
-
             processSerialLine(
               line
             );
+
           }
+
         }
 
       }
 
       finally {
 
-        if (serialReader) {
+        serialReader
+          ?.releaseLock();
 
-          serialReader.releaseLock();
 
-        }
+        serialReader =
+          null;
 
-        serialReader = null;
       }
+
     }
 
   }
@@ -765,51 +810,37 @@ async function readSerialLoop() {
   catch (error) {
 
     console.error(
-      "Serial reading error:",
+      "Serial error:",
       error
     );
 
 
     addAlert(
+
       "warning",
+
       "Serial communication stopped",
+
       error.message ||
-      "Unknown serial error"
+      "Unknown error"
+
     );
 
   }
 
-  finally {
-
-    baseStationConnected =
-      false;
-
-
-    updateBaseStationStatus(
-      false
-    );
-  }
 }
 
 
 /* =========================================================
-   PROCESS SERIAL LINE
-
-   Your ESP32 currently prints:
-
-   ========== PACKET RECEIVED ==========
-   Data: 426,...
-   RSSI: -108 dBm
-   SNR: 7.25
-   =====================================
-
-   Only Data: is actual rover telemetry.
+   SERIAL LINE PROCESSOR
 ========================================================= */
 
-function processSerialLine(line) {
+function processSerialLine(
+  line
+) {
 
   /*
-     MAIN TELEMETRY
+     Rover data
   */
 
   if (
@@ -824,33 +855,37 @@ function processSerialLine(line) {
       );
 
 
-    if (telemetry) {
+    if (
+      telemetry
+    ) {
 
-      processRoverTelemetry(
+      processTelemetry(
         telemetry
       );
 
     }
 
+
     return;
+
   }
 
 
   /*
-     Optional clean packet without Data:
-     Also accepted if exactly 16 CSV fields.
+     Also accept direct raw CSV
   */
 
   if (
     line.includes(",")
   ) {
 
-    const values =
-      line.split(",");
+    const count =
+      line.split(",")
+        .length;
 
 
     if (
-      values.length === 16
+      count === 16
     ) {
 
       const telemetry =
@@ -859,21 +894,26 @@ function processSerialLine(line) {
         );
 
 
-      if (telemetry) {
+      if (
+        telemetry
+      ) {
 
-        processRoverTelemetry(
+        processTelemetry(
           telemetry
         );
 
       }
 
+
       return;
+
     }
+
   }
 
 
   /*
-     RSSI
+     LoRa RSSI
   */
 
   if (
@@ -888,27 +928,25 @@ function processSerialLine(line) {
       );
 
 
-    if (match) {
-
-      const rssi =
-        Number(
-          match[0]
-        );
-
+    if (
+      match
+    ) {
 
       setText(
         "telemetryRssi",
-        `${rssi} dBm`
+        `${match[0]} dBm`
       );
 
     }
 
+
     return;
+
   }
 
 
   /*
-     SNR
+     LoRa SNR
   */
 
   if (
@@ -923,28 +961,24 @@ function processSerialLine(line) {
       );
 
 
-    if (match) {
-
-      const snr =
-        Number(
-          match[0]
-        );
-
+    if (
+      match
+    ) {
 
       setText(
         "telemetrySnr",
-        `${snr} dB`
+        `${match[0]} dB`
       );
 
     }
+
   }
+
 }
 
 
 /* =========================================================
    FINAL TELEMETRY PARSER
-
-   EXACT SEQUENCE:
 
    0  PACKET_NUMBER
    1  LATITUDE
@@ -964,31 +998,30 @@ function processSerialLine(line) {
    15 BATTERY_PERCENT
 ========================================================= */
 
-function parseTelemetry(line) {
+function parseTelemetry(
+  line
+) {
 
-  let dataLine =
+  let clean =
     line.trim();
 
 
-  /*
-     Remove Data:
-  */
-
   if (
-    dataLine.startsWith(
+    clean.startsWith(
       "Data:"
     )
   ) {
 
-    dataLine =
-      dataLine
+    clean =
+      clean
         .substring(5)
         .trim();
+
   }
 
 
   const values =
-    dataLine
+    clean
       .split(",")
       .map(
         value =>
@@ -997,45 +1030,27 @@ function parseTelemetry(line) {
 
 
   console.log(
-    "Telemetry fields received:",
+    "Telemetry field count:",
     values.length
   );
 
 
-  /*
-     MUST HAVE EXACTLY 16 VALUES
-  */
-
   if (
-    values.length !== 16
+    values.length !==
+    16
   ) {
 
     console.warn(
-      "Invalid telemetry packet."
-    );
-
-    console.warn(
-      "Expected 16 fields but received:",
-      values.length
-    );
-
-    console.warn(
-      dataLine
-    );
-
-
-    addAlert(
-      "warning",
-      "Invalid telemetry packet",
-      `Expected 16 fields, received ${values.length}`
+      `Expected 16 telemetry fields, received ${values.length}`
     );
 
 
     return null;
+
   }
 
 
-  const telemetry = {
+  const data = {
 
     packetNumber:
       Number(values[0]),
@@ -1047,9 +1062,6 @@ function parseTelemetry(line) {
       Number(values[2]),
 
     soil:
-      Number(values[3]),
-
-    moisture:
       Number(values[3]),
 
     temperature:
@@ -1090,66 +1102,54 @@ function parseTelemetry(line) {
 
     timestamp:
       new Date()
+
   };
 
 
-  /*
-     Reject malformed numeric packets.
-  */
-
-  const numericFields = [
-
-    telemetry.packetNumber,
-    telemetry.latitude,
-    telemetry.longitude,
-    telemetry.soil,
-    telemetry.temperature,
-    telemetry.humidity,
-    telemetry.nitrogen,
-    telemetry.phosphorus,
-    telemetry.potassium,
-    telemetry.roll,
-    telemetry.pitch,
-    telemetry.yaw,
-    telemetry.accX,
-    telemetry.accY,
-    telemetry.accZ,
-    telemetry.battery
-
-  ];
+  const numeric =
+    Object
+      .entries(data)
+      .filter(
+        ([key]) =>
+          key !==
+          "timestamp"
+      )
+      .map(
+        ([, value]) =>
+          value
+      );
 
 
   if (
-    numericFields.some(
+    numeric.some(
       value =>
-        Number.isNaN(value)
+        Number.isNaN(
+          value
+        )
     )
   ) {
 
     console.warn(
-      "Telemetry contains invalid numeric values:",
-      telemetry
+      "Invalid telemetry values:",
+      data
     );
 
+
     return null;
+
   }
 
 
-  console.log(
-    "Parsed telemetry:",
-    telemetry
-  );
+  return data;
 
-
-  return telemetry;
 }
 
 
 /* =========================================================
-   PROCESS VALID ROVER PACKET
+   PROCESS VALID TELEMETRY
 ========================================================= */
 
-function processRoverTelemetry(
+function processTelemetry(
   data
 ) {
 
@@ -1175,130 +1175,151 @@ function processRoverTelemetry(
     );
 
 
-  /*
-     Rover is alive.
-  */
-
   setRoverOnline(
     true
   );
 
 
-  /*
-     Update main telemetry page.
-  */
+  updateDashboard(
+    data
+  );
+
 
   updateLiveTelemetry(
     data
   );
 
 
-  /*
-     Update dashboard NPK.
-  */
-
-  updateNpkGauges(
+  updateRoverLocation(
     data
   );
 
 
-  /*
-     Update dashboard battery.
-  */
-
-  updateBatteryUi(
-    data.battery
-  );
-
-
-  /*
-     Update position.
-  */
-
-  setText(
-    "zoneGps",
-    `${data.latitude.toFixed(6)}° N, ${data.longitude.toFixed(6)}° E`
-  );
-
-
-  /*
-     Environmental data.
-  */
-
-  setText(
-    "zoneMoisture",
-    `${data.soil.toFixed(1)}%`
-  );
-
-
-  setText(
-    "zoneTemperature",
-    `${data.temperature.toFixed(1)} °C`
-  );
-
-
-  setText(
-    "zoneHumidity",
-    `${data.humidity.toFixed(1)}%`
-  );
-
-
-  /*
-     No pH is currently transmitted.
-  */
-
-  setText(
-    "zonePh",
-    "N/A"
-  );
-
-
-  /*
-     Live Rover page.
-  */
-
-  updateLiveRoverPage(
+  updateNpk(
     data
   );
 
-
-  /*
-     History.
-  */
 
   saveTelemetrySample(
     data
   );
 
 
-  /*
-     Recommendation fields.
-  */
-
   updateRecommendationInputs(
     data
   );
 
 
-  /*
-     Time.
-  */
-
   updateTimestampDisplay();
+
 }
 
 
 /* =========================================================
-   LIVE TELEMETRY PAGE
+   DASHBOARD
+========================================================= */
+
+function updateDashboard(
+  data
+) {
+
+  setText(
+    "batteryValue",
+    `${Math.round(
+      data.battery
+    )}%`
+  );
+
+
+  setText(
+    "sideBattery",
+    `${Math.round(
+      data.battery
+    )}%`
+  );
+
+
+  el("batteryBar")
+    .style.width =
+      `${data.battery}%`;
+
+
+  el("sideBatteryBar")
+    .style.width =
+      `${data.battery}%`;
+
+
+  setText(
+    "dashboardPacket",
+    data.packetNumber
+  );
+
+
+  setText(
+    "dashboardMoisture",
+    `${data.soil.toFixed(1)}%`
+  );
+
+
+  setText(
+    "dashboardTemperature",
+    `${data.temperature.toFixed(1)} °C`
+  );
+
+
+  setText(
+    "dashboardHumidity",
+    `${data.humidity.toFixed(1)}%`
+  );
+
+
+  setText(
+    "positionRoll",
+    `${data.roll.toFixed(2)}°`
+  );
+
+
+  setText(
+    "positionPitch",
+    `${data.pitch.toFixed(2)}°`
+  );
+
+
+  setText(
+    "positionYaw",
+    `${data.yaw.toFixed(2)}°`
+  );
+
+
+  setText(
+    "positionBattery",
+    `${Math.round(
+      data.battery
+    )}%`
+  );
+
+
+  setText(
+    "positionLastPacket",
+    data.packetNumber
+  );
+
+
+  setText(
+    "overviewState",
+    "Live"
+  );
+
+}
+
+
+/* =========================================================
+   LIVE TELEMETRY
 ========================================================= */
 
 function updateLiveTelemetry(
   data
 ) {
-
-  /*
-     HEADER
-  */
 
   setText(
     "telemetryLastPacket",
@@ -1319,10 +1340,6 @@ function updateLiveTelemetry(
     "ONLINE"
   );
 
-
-  /*
-     NPK
-  */
 
   setText(
     "telemetryN",
@@ -1348,10 +1365,6 @@ function updateLiveTelemetry(
   );
 
 
-  /*
-     ENVIRONMENT
-  */
-
   setText(
     "telemetryMoisture",
     data.soil.toFixed(1)
@@ -1370,10 +1383,6 @@ function updateLiveTelemetry(
   );
 
 
-  /*
-     GPS
-  */
-
   setText(
     "telemetryGps",
     `${data.latitude.toFixed(6)}, ${data.longitude.toFixed(6)}`
@@ -1381,29 +1390,12 @@ function updateLiveTelemetry(
 
 
   setText(
-    "telemetryGpsStatus",
-    (
-      data.latitude !== 0 ||
-      data.longitude !== 0
-    )
-      ? "GPS Fix"
-      : "No GPS Fix"
-  );
-
-
-  /*
-     BATTERY
-  */
-
-  setText(
     "telemetryBattery",
-    `${Math.round(data.battery)}%`
+    `${Math.round(
+      data.battery
+    )}%`
   );
 
-
-  /*
-     IMU
-  */
 
   setText(
     "telemetryRoll",
@@ -1441,10 +1433,6 @@ function updateLiveTelemetry(
   );
 
 
-  /*
-     TELEMETRY STATUS
-  */
-
   setText(
     "telemetryStatusText",
     "Receiving telemetry"
@@ -1452,291 +1440,32 @@ function updateLiveTelemetry(
 
 
   const dot =
-    el("telemetryStatusDot");
-
-
-  dot?.classList.remove(
-    "disconnected-dot"
-  );
-
-
-  dot?.classList.add(
-    "connected-dot"
-  );
-}
-
-
-/* =========================================================
-   DATA AGE
-========================================================= */
-
-function updateDataAge() {
-
-  if (
-    !lastRoverPacketAt
-  ) {
-
-    setText(
-      "telemetryDataAge",
-      "--"
+    el(
+      "telemetryStatusDot"
     );
 
-    return;
-  }
 
-
-  const ageSeconds =
-    (
-      Date.now() -
-      lastRoverPacketAt.getTime()
-    ) / 1000;
-
-
-  setText(
-    "telemetryDataAge",
-    `${ageSeconds.toFixed(1)} sec`
-  );
-
-
-  if (
-    ageSeconds < 60
-  ) {
-
-    setText(
-      "sensorDataAge",
-      `${Math.floor(ageSeconds)} sec ago`
-    );
-
-  }
-
-  else {
-
-    setText(
-      "sensorDataAge",
-      `${Math.floor(
-        ageSeconds / 60
-      )} min ago`
-    );
-
-  }
-}
-
-
-setInterval(
-  updateDataAge,
-  500
-);
-
-
-/* =========================================================
-   ROVER ONLINE
-========================================================= */
-
-function setRoverOnline(
-  online
-) {
-
-  const dot =
-    el("roverStatusDot");
-
-
-  if (online) {
-
-    dot?.classList.remove(
+  dot
+    ?.classList
+    .remove(
       "disconnected-dot"
     );
 
 
-    dot?.classList.add(
+  dot
+    ?.classList
+    .add(
       "connected-dot"
     );
 
-
-    setText(
-      "roverStatusText",
-      "Connected"
-    );
-
-
-    setText(
-      "sideRoverStatus",
-      "Connected"
-    );
-
-
-    if (
-      el("sideRoverStatus")
-    ) {
-
-      el("sideRoverStatus")
-        .className =
-          "ok";
-
-    }
-
-  }
-
-  else {
-
-    dot?.classList.remove(
-      "connected-dot"
-    );
-
-
-    dot?.classList.add(
-      "disconnected-dot"
-    );
-
-
-    setText(
-      "roverStatusText",
-      "No Signal"
-    );
-
-
-    setText(
-      "sideRoverStatus",
-      "No Signal"
-    );
-
-
-    if (
-      el("sideRoverStatus")
-    ) {
-
-      el("sideRoverStatus")
-        .className =
-          "";
-
-    }
-  }
-}
-
-
-/*
-   Mark rover offline if no packet
-   arrives for more than 8 seconds.
-
-   Rover currently transmits every
-   ~5 seconds.
-*/
-
-setInterval(
-  () => {
-
-    if (
-      !lastRoverPacketAt
-    ) {
-
-      return;
-
-    }
-
-
-    const age =
-      Date.now() -
-      lastRoverPacketAt.getTime();
-
-
-    if (
-      age > 8000
-    ) {
-
-      setRoverOnline(
-        false
-      );
-
-
-      setText(
-        "telemetryStatusText",
-        "Telemetry Lost"
-      );
-
-
-      const dot =
-        el("telemetryStatusDot");
-
-
-      dot?.classList.remove(
-        "connected-dot"
-      );
-
-
-      dot?.classList.add(
-        "disconnected-dot"
-      );
-
-    }
-
-  },
-  1000
-);
-
-
-/* =========================================================
-   BATTERY
-========================================================= */
-
-function updateBatteryUi(
-  battery
-) {
-
-  const value =
-    Math.max(
-      0,
-      Math.min(
-        100,
-        battery
-      )
-    );
-
-
-  setText(
-    "batteryValue",
-    `${Math.round(value)}%`
-  );
-
-
-  setText(
-    "sideBattery",
-    `${Math.round(value)}%`
-  );
-
-
-  setText(
-    "liveRoverBattery",
-    `${Math.round(value)}%`
-  );
-
-
-  if (
-    el("batteryBar")
-  ) {
-
-    el("batteryBar")
-      .style.width =
-        `${value}%`;
-
-  }
-
-
-  if (
-    el("sideBatteryBar")
-  ) {
-
-    el("sideBatteryBar")
-      .style.width =
-        `${value}%`;
-
-  }
 }
 
 
 /* =========================================================
-   NPK DASHBOARD
+   NPK
 ========================================================= */
 
-function updateNpkGauges(
+function updateNpk(
   data
 ) {
 
@@ -1768,36 +1497,47 @@ function updateNpkGauges(
 
 
   const dot =
-    el("sensorStatusDot");
+    el(
+      "sensorStatusDot"
+    );
 
 
-  dot?.classList.remove(
-    "disconnected-dot"
-  );
+  dot
+    ?.classList
+    .remove(
+      "disconnected-dot"
+    );
 
 
-  dot?.classList.add(
-    "connected-dot"
-  );
+  dot
+    ?.classList
+    .add(
+      "connected-dot"
+    );
+
 }
 
 
 function updateGauge(
   id,
   value,
-  maxValue
+  max
 ) {
 
   const element =
     el(id);
 
 
-  if (!element)
+  if (
+    !element
+  )
     return;
 
 
   element.textContent =
-    Math.round(value);
+    Math.round(
+      value
+    );
 
 
   const gauge =
@@ -1806,47 +1546,504 @@ function updateGauge(
     );
 
 
-  if (!gauge)
+  if (
+    !gauge
+  )
     return;
 
 
-  const percentage =
+  const percent =
     Math.max(
       0,
       Math.min(
         100,
         (
           value /
-          maxValue
-        ) * 100
+          max
+        ) *
+        100
       )
     );
 
 
-  gauge.style.setProperty(
-    "--value",
-    percentage
-  );
+  gauge.style
+    .setProperty(
+      "--value",
+      percent
+    );
+
 }
 
 
 /* =========================================================
-   LIVE ROVER PAGE
+   MAP INITIALIZATION
 ========================================================= */
 
-function updateLiveRoverPage(
+function initializeRoverMaps() {
+
+  /*
+     Initial map location before GPS
+     lock.
+
+     Change if desired.
+  */
+
+  const initial = [
+    23.7806,
+    90.4071
+  ];
+
+
+  if (
+    el(
+      "roverLiveMap"
+    ) &&
+    !roverMap
+  ) {
+
+    roverMap =
+      L.map(
+        "roverLiveMap"
+      )
+      .setView(
+        initial,
+        16
+      );
+
+
+    L.tileLayer(
+      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      {
+
+        maxZoom:
+          20,
+
+        attribution:
+          "&copy; OpenStreetMap contributors"
+
+      }
+    )
+    .addTo(
+      roverMap
+    );
+
+
+    roverTrackLine =
+      L.polyline(
+        [],
+        {
+          weight:
+            4
+        }
+      )
+      .addTo(
+        roverMap
+      );
+
+  }
+
+
+  if (
+    el(
+      "largeRoverMap"
+    ) &&
+    !largeRoverMap
+  ) {
+
+    largeRoverMap =
+      L.map(
+        "largeRoverMap"
+      )
+      .setView(
+        initial,
+        17
+      );
+
+
+    L.tileLayer(
+      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      {
+
+        maxZoom:
+          20,
+
+        attribution:
+          "&copy; OpenStreetMap contributors"
+
+      }
+    )
+    .addTo(
+      largeRoverMap
+    );
+
+
+    largeRoverTrackLine =
+      L.polyline(
+        [],
+        {
+          weight:
+            4
+        }
+      )
+      .addTo(
+        largeRoverMap
+      );
+
+  }
+
+}
+
+
+/* =========================================================
+   ROVER ICON
+========================================================= */
+
+function createRoverIcon() {
+
+  return L.divIcon({
+
+    className:
+      "",
+
+    html:
+      `
+      <div class="rover-marker">
+        🚜
+      </div>
+      `,
+
+    iconSize:
+      [36, 36],
+
+    iconAnchor:
+      [18, 18],
+
+    popupAnchor:
+      [0, -20]
+
+  });
+
+}
+
+
+/* =========================================================
+   LIVE GPS UPDATE
+========================================================= */
+
+function updateRoverLocation(
   data
 ) {
 
+  const lat =
+    Number(
+      data.latitude
+    );
+
+
+  const lon =
+    Number(
+      data.longitude
+    );
+
+
+  const validGps =
+
+    Number.isFinite(
+      lat
+    ) &&
+
+    Number.isFinite(
+      lon
+    ) &&
+
+    lat !== 0 &&
+
+    lon !== 0 &&
+
+    lat >= -90 &&
+
+    lat <= 90 &&
+
+    lon >= -180 &&
+
+    lon <= 180;
+
+
+  if (
+    !validGps
+  ) {
+
+    setText(
+      "mapGpsStatus",
+      "No GPS Fix"
+    );
+
+
+    setText(
+      "largeMapGpsStatus",
+      "No GPS Fix"
+    );
+
+
+    setText(
+      "liveRoverGpsStatus",
+      "No Fix"
+    );
+
+
+    setText(
+      "dashboardGpsStatus",
+      "No Fix"
+    );
+
+
+    setText(
+      "positionStatus",
+      "No GPS Fix"
+    );
+
+
+    return;
+
+  }
+
+
+  const position = [
+    lat,
+    lon
+  ];
+
+
+  /*
+     Store rover path.
+  */
+
+  const previous =
+    roverGpsHistory[
+      roverGpsHistory.length -
+      1
+    ];
+
+
+  /*
+     Avoid storing the exact same
+     coordinate repeatedly.
+  */
+
+  if (
+    !previous ||
+    previous[0] !== lat ||
+    previous[1] !== lon
+  ) {
+
+    roverGpsHistory.push(
+      position
+    );
+
+  }
+
+
+  if (
+    roverGpsHistory.length >
+    1000
+  ) {
+
+    roverGpsHistory.shift();
+
+  }
+
+
+  /*
+     Dashboard marker.
+  */
+
+  if (
+    roverMap
+  ) {
+
+    if (
+      !roverMarker
+    ) {
+
+      roverMarker =
+        L.marker(
+          position,
+          {
+            icon:
+              createRoverIcon()
+          }
+        )
+        .addTo(
+          roverMap
+        );
+
+    }
+
+    else {
+
+      roverMarker
+        .setLatLng(
+          position
+        );
+
+    }
+
+
+    roverMarker
+      .bindPopup(
+        buildRoverPopup(
+          data
+        )
+      );
+
+
+    roverTrackLine
+      ?.setLatLngs(
+        roverGpsHistory
+      );
+
+  }
+
+
+  /*
+     Large marker.
+  */
+
+  if (
+    largeRoverMap
+  ) {
+
+    if (
+      !largeRoverMarker
+    ) {
+
+      largeRoverMarker =
+        L.marker(
+          position,
+          {
+            icon:
+              createRoverIcon()
+          }
+        )
+        .addTo(
+          largeRoverMap
+        );
+
+    }
+
+    else {
+
+      largeRoverMarker
+        .setLatLng(
+          position
+        );
+
+    }
+
+
+    largeRoverMarker
+      .bindPopup(
+        buildRoverPopup(
+          data
+        )
+      );
+
+
+    largeRoverTrackLine
+      ?.setLatLngs(
+        roverGpsHistory
+      );
+
+  }
+
+
+  /*
+     Center automatically only
+     on first real GPS point.
+  */
+
+  if (
+    !mapHasCenteredOnce
+  ) {
+
+    roverMap
+      ?.setView(
+        position,
+        18
+      );
+
+
+    largeRoverMap
+      ?.setView(
+        position,
+        19
+      );
+
+
+    mapHasCenteredOnce =
+      true;
+
+  }
+
+
+  /*
+     Update labels.
+  */
+
   setText(
-    "liveRoverGps",
-    `${data.latitude.toFixed(6)}, ${data.longitude.toFixed(6)}`
+    "mapLatitude",
+    lat.toFixed(6)
+  );
+
+
+  setText(
+    "mapLongitude",
+    lon.toFixed(6)
+  );
+
+
+  setText(
+    "mapPacketNumber",
+    data.packetNumber
+  );
+
+
+  setText(
+    "mapLastUpdate",
+    new Date()
+      .toLocaleTimeString()
+  );
+
+
+  setText(
+    "zoneGps",
+    `${lat.toFixed(6)}° N, ${lon.toFixed(6)}° E`
+  );
+
+
+  setText(
+    "liveRoverLatitude",
+    lat.toFixed(6)
+  );
+
+
+  setText(
+    "liveRoverLongitude",
+    lon.toFixed(6)
+  );
+
+
+  setText(
+    "liveRoverPacket",
+    data.packetNumber
   );
 
 
   setText(
     "liveRoverBattery",
-    `${Math.round(data.battery)}%`
+    `${Math.round(
+      data.battery
+    )}%`
   );
 
 
@@ -1858,44 +2055,451 @@ function updateLiveRoverPage(
 
   setText(
     "liveRoverLastPacket",
-    formatTimestamp(
-      data.timestamp
-    )
-  );
-
-
-  /*
-     Not currently in rover packet.
-  */
-
-  setText(
-    "liveRoverZone",
-    "N/A"
+    formatTimestamp()
   );
 
 
   setText(
-    "liveRoverSpeed",
-    "N/A"
+    "liveRoverGpsStatus",
+    "GPS Fix"
   );
+
+
+  setText(
+    "mapGpsStatus",
+    "GPS Fix"
+  );
+
+
+  setText(
+    "largeMapGpsStatus",
+    "GPS Fix"
+  );
+
+
+  setText(
+    "dashboardGpsStatus",
+    "GPS Fix"
+  );
+
+
+  setText(
+    "positionStatus",
+    "GPS Fix"
+  );
+
+
+  setText(
+    "trackPointCount",
+    `${roverGpsHistory.length} points`
+  );
+
+
+  [
+    "mapGpsDot",
+    "largeMapGpsDot"
+  ]
+  .forEach(
+    id => {
+
+      const dot =
+        el(id);
+
+
+      dot
+        ?.classList
+        .remove(
+          "disconnected-dot"
+        );
+
+
+      dot
+        ?.classList
+        .add(
+          "connected-dot"
+        );
+
+    }
+  );
+
+
+  setText(
+    "telemetryGpsStatus",
+    "GPS Fix"
+  );
+
 }
 
 
 /* =========================================================
-   SENSOR TIMESTAMP
+   ROVER POPUP
 ========================================================= */
 
-function updateTimestampDisplay() {
+function buildRoverPopup(
+  data
+) {
+
+  return `
+    <strong>
+      AgriRover
+    </strong>
+
+    <br>
+
+    Packet:
+    ${data.packetNumber}
+
+    <br>
+
+    Battery:
+    ${Math.round(data.battery)}%
+
+    <br>
+
+    N:
+    ${Math.round(data.nitrogen)} mg/kg
+
+    <br>
+
+    P:
+    ${Math.round(data.phosphorus)} mg/kg
+
+    <br>
+
+    K:
+    ${Math.round(data.potassium)} mg/kg
+
+    <br>
+
+    Moisture:
+    ${data.soil.toFixed(1)}%
+
+    <br>
+
+    Updated:
+    ${new Date().toLocaleTimeString()}
+  `;
+
+}
+
+
+/* =========================================================
+   CENTER MAP
+========================================================= */
+
+function centerOnRover(
+  map,
+  zoom
+) {
+
+  if (
+    !latestTelemetry
+  ) {
+
+    toast(
+      "No rover telemetry yet"
+    );
+
+
+    return;
+
+  }
+
+
+  const lat =
+    Number(
+      latestTelemetry.latitude
+    );
+
+
+  const lon =
+    Number(
+      latestTelemetry.longitude
+    );
+
+
+  if (
+    lat === 0 ||
+    lon === 0
+  ) {
+
+    toast(
+      "No valid GPS fix yet"
+    );
+
+
+    return;
+
+  }
+
+
+  map
+    ?.setView(
+      [lat, lon],
+      zoom
+    );
+
+}
+
+
+el("centerRoverMap")
+  ?.addEventListener(
+    "click",
+    () =>
+      centerOnRover(
+        roverMap,
+        18
+      )
+  );
+
+
+el("centerLargeRoverMap")
+  ?.addEventListener(
+    "click",
+    () =>
+      centerOnRover(
+        largeRoverMap,
+        19
+      )
+  );
+
+
+/* =========================================================
+   CLEAR TRACK
+========================================================= */
+
+function clearRoverTrack() {
+
+  roverGpsHistory =
+    [];
+
+
+  roverTrackLine
+    ?.setLatLngs(
+      []
+    );
+
+
+  largeRoverTrackLine
+    ?.setLatLngs(
+      []
+    );
+
 
   setText(
-    "sensorTimestamp",
-    lastSensorUpdate
-      ? formatTimestamp(
-          lastSensorUpdate
-        )
-      : "No data received"
+    "trackPointCount",
+    "0 points"
   );
+
+
+  toast(
+    "Rover track cleared"
+  );
+
 }
+
+
+el("clearRoverTrack")
+  ?.addEventListener(
+    "click",
+    clearRoverTrack
+  );
+
+
+el("clearLargeRoverTrack")
+  ?.addEventListener(
+    "click",
+    clearRoverTrack
+  );
+
+
+/* =========================================================
+   TELEMETRY AGE
+========================================================= */
+
+function updateDataAge() {
+
+  if (
+    !lastRoverPacketAt
+  ) {
+
+    return;
+
+  }
+
+
+  const age =
+    (
+      Date.now() -
+      lastRoverPacketAt
+        .getTime()
+    ) /
+    1000;
+
+
+  setText(
+    "telemetryDataAge",
+    `${age.toFixed(1)} sec`
+  );
+
+
+  if (
+    age < 60
+  ) {
+
+    setText(
+      "sensorDataAge",
+      `${Math.floor(age)} sec ago`
+    );
+
+  }
+
+  else {
+
+    setText(
+      "sensorDataAge",
+      `${Math.floor(
+        age /
+        60
+      )} min ago`
+    );
+
+  }
+
+}
+
+
+setInterval(
+  updateDataAge,
+  500
+);
+
+
+/* =========================================================
+   ROVER CONNECTION STATUS
+========================================================= */
+
+function setRoverOnline(
+  online
+) {
+
+  const dot =
+    el(
+      "roverStatusDot"
+    );
+
+
+  if (
+    online
+  ) {
+
+    dot
+      ?.classList
+      .remove(
+        "disconnected-dot"
+      );
+
+
+    dot
+      ?.classList
+      .add(
+        "connected-dot"
+      );
+
+
+    setText(
+      "roverStatusText",
+      "Connected"
+    );
+
+
+    setText(
+      "sideRoverStatus",
+      "Connected"
+    );
+
+
+    el(
+      "sideRoverStatus"
+    ).className =
+      "ok";
+
+  }
+
+  else {
+
+    dot
+      ?.classList
+      .remove(
+        "connected-dot"
+      );
+
+
+    dot
+      ?.classList
+      .add(
+        "disconnected-dot"
+      );
+
+
+    setText(
+      "roverStatusText",
+      "No Signal"
+    );
+
+
+    setText(
+      "sideRoverStatus",
+      "No Signal"
+    );
+
+  }
+
+}
+
+
+/*
+   Rover telemetry interval has been
+   around 5 seconds.
+
+   Use 8 second timeout.
+*/
+
+setInterval(
+  () => {
+
+    if (
+      !lastRoverPacketAt
+    )
+      return;
+
+
+    const age =
+      Date.now() -
+      lastRoverPacketAt
+        .getTime();
+
+
+    if (
+      age >
+      8000
+    ) {
+
+      setRoverOnline(
+        false
+      );
+
+
+      setText(
+        "telemetryStatusText",
+        "Telemetry Lost"
+      );
+
+    }
+
+  },
+  1000
+);
 
 
 /* =========================================================
@@ -1907,24 +2511,22 @@ function addTelemetryConsoleLine(
 ) {
 
   const box =
-    el("telemetryConsole");
-
-
-  if (!box)
-    return;
-
-
-  const empty =
-    box.querySelector(
-      ".console-empty"
+    el(
+      "telemetryConsole"
     );
 
 
-  if (empty) {
+  if (
+    !box
+  )
+    return;
 
-    empty.remove();
 
-  }
+  box
+    .querySelector(
+      ".console-empty"
+    )
+    ?.remove();
 
 
   const line =
@@ -1969,10 +2571,6 @@ function addTelemetryConsoleLine(
   );
 
 
-  /*
-     Keep latest 200 lines.
-  */
-
   while (
     box.children.length >
     200
@@ -1987,30 +2585,30 @@ function addTelemetryConsoleLine(
 
   box.scrollTop =
     box.scrollHeight;
+
 }
 
 
-if (
-  el("clearTelemetryConsole")
-) {
-
-  el("clearTelemetryConsole").onclick =
+el("clearTelemetryConsole")
+  ?.addEventListener(
+    "click",
     () => {
 
-      el("telemetryConsole")
-        .innerHTML =
-          `
-          <div class="console-empty">
-            Waiting for rover packets...
-          </div>
-          `;
+      el(
+        "telemetryConsole"
+      ).innerHTML =
+        `
+        <div class="console-empty">
+          Waiting for rover packets...
+        </div>
+        `;
 
-    };
-}
+    }
+  );
 
 
 /* =========================================================
-   SAVE TELEMETRY HISTORY
+   SENSOR HISTORY
 ========================================================= */
 
 function saveTelemetrySample(
@@ -2020,7 +2618,8 @@ function saveTelemetrySample(
   const sample = {
 
     timestamp:
-      new Date().toISOString(),
+      new Date()
+        .toISOString(),
 
     packetNumber:
       data.packetNumber,
@@ -2069,6 +2668,7 @@ function saveTelemetrySample(
 
     battery:
       data.battery
+
   };
 
 
@@ -2077,68 +2677,60 @@ function saveTelemetrySample(
   );
 
 
-  /*
-     Avoid gigantic localStorage.
-  */
-
   if (
     sensorRows.length >
-    5000
+    3000
   ) {
 
     sensorRows =
       sensorRows.slice(
         0,
-        5000
+        3000
       );
 
   }
 
 
-  try {
+  localStorage.setItem(
 
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(
-        sensorRows
-      )
-    );
+    STORAGE_KEY,
 
-  }
+    JSON.stringify(
+      sensorRows
+    )
 
-  catch (error) {
-
-    console.error(
-      "History save error:",
-      error
-    );
-
-  }
+  );
 
 
-  renderSensorHistory();
+  renderHistory();
 
 
   setText(
     "historySampleCount",
     sensorRows.length
   );
+
 }
 
 
 /* =========================================================
-   SENSOR HISTORY TABLE
+   HISTORY TABLE
 ========================================================= */
 
-function renderSensorHistory(
-  rows = sensorRows
+function renderHistory(
+  rows =
+    sensorRows
 ) {
 
-  const tbody =
-    el("sensorHistory");
+  const body =
+    el(
+      "sensorHistory"
+    );
 
 
-  if (!tbody)
+  if (
+    !body
+  )
     return;
 
 
@@ -2146,7 +2738,7 @@ function renderSensorHistory(
     rows.length === 0
   ) {
 
-    tbody.innerHTML =
+    body.innerHTML =
       `
       <tr>
         <td colspan="10">
@@ -2163,10 +2755,11 @@ function renderSensorHistory(
 
 
     return;
+
   }
 
 
-  tbody.innerHTML =
+  body.innerHTML =
     rows
       .map(
         sample =>
@@ -2180,7 +2773,7 @@ function renderSensorHistory(
             </td>
 
             <td>
-              ${sample.packetNumber ?? "--"}
+              ${sample.packetNumber}
             </td>
 
             <td>
@@ -2230,7 +2823,7 @@ function renderSensorHistory(
 
   setText(
     "historySummary",
-    `Showing ${rows.length} of ${sensorRows.length} samples`
+    `${rows.length} stored measurements`
   );
 
 
@@ -2249,11 +2842,12 @@ function renderSensorHistory(
 
       }
     );
+
 }
 
 
 /* =========================================================
-   VIEW HISTORICAL SAMPLE
+   HISTORICAL SAMPLE
 ========================================================= */
 
 function viewHistorySample(
@@ -2268,12 +2862,20 @@ function viewHistorySample(
     );
 
 
-  if (!sample)
+  if (
+    !sample
+  )
     return;
 
 
   navigate(
     "telemetry"
+  );
+
+
+  setText(
+    "telemetryPacketNumber",
+    sample.packetNumber
   );
 
 
@@ -2362,12 +2964,6 @@ function viewHistorySample(
 
 
   setText(
-    "telemetryPacketNumber",
-    sample.packetNumber
-  );
-
-
-  setText(
     "telemetryLastPacket",
     formatTimestamp(
       sample.timestamp
@@ -2383,243 +2979,473 @@ function viewHistorySample(
 
   setText(
     "telemetryRoverStatus",
-    "HISTORICAL DATA"
+    "HISTORICAL"
   );
+
 }
 
 
 /* =========================================================
    HISTORY FILTER
-
-   Since current packets have NO ZONE,
-   filtering is date-based only.
 ========================================================= */
 
-function filterHistory() {
-
-  const from =
-    el("historyFrom")
-      ?.value;
-
-
-  const to =
-    el("historyTo")
-      ?.value;
-
-
-  const filtered =
-    sensorRows.filter(
-      sample => {
-
-        const time =
-          new Date(
-            sample.timestamp
-          );
-
-
-        const after =
-          !from ||
-          time >=
-            new Date(
-              `${from}T00:00:00`
-            );
-
-
-        const before =
-          !to ||
-          time <=
-            new Date(
-              `${to}T23:59:59`
-            );
-
-
-        return (
-          after &&
-          before
-        );
-      }
-    );
-
-
-  renderSensorHistory(
-    filtered
-  );
-}
-
-
-if (
-  el("filterHistory")
-) {
-
-  el("filterHistory").onclick =
-    filterHistory;
-
-}
-
-
-if (
-  el("resetHistoryFilter")
-) {
-
-  el("resetHistoryFilter").onclick =
+el("filterHistory")
+  ?.addEventListener(
+    "click",
     () => {
 
-      if (
-        el("historyFrom")
-      ) {
-
-        el("historyFrom").value =
-          "";
-
-      }
+      const from =
+        el(
+          "historyFrom"
+        ).value;
 
 
-      if (
-        el("historyTo")
-      ) {
-
-        el("historyTo").value =
-          "";
-
-      }
+      const to =
+        el(
+          "historyTo"
+        ).value;
 
 
-      renderSensorHistory();
+      const filtered =
+        sensorRows.filter(
+          sample => {
 
-    };
-}
+            const date =
+              new Date(
+                sample.timestamp
+              );
+
+
+            const validFrom =
+              !from ||
+              date >=
+                new Date(
+                  `${from}T00:00:00`
+                );
+
+
+            const validTo =
+              !to ||
+              date <=
+                new Date(
+                  `${to}T23:59:59`
+                );
+
+
+            return (
+              validFrom &&
+              validTo
+            );
+
+          }
+        );
+
+
+      renderHistory(
+        filtered
+      );
+
+    }
+  );
+
+
+el("resetHistoryFilter")
+  ?.addEventListener(
+    "click",
+    () => {
+
+      el(
+        "historyFrom"
+      ).value =
+        "";
+
+
+      el(
+        "historyTo"
+      ).value =
+        "";
+
+
+      renderHistory();
+
+    }
+  );
 
 
 /* =========================================================
-   EXPORT HISTORY CSV
+   EXPORT HISTORY
 ========================================================= */
 
-function exportHistoryCsv() {
+el("exportHistoryCsv")
+  ?.addEventListener(
+    "click",
+    () => {
 
-  const header = [
+      const header = [
 
-    "Timestamp",
+        "Timestamp",
+        "Packet",
+        "Latitude",
+        "Longitude",
+        "Soil",
+        "Temperature",
+        "Humidity",
+        "Nitrogen",
+        "Phosphorus",
+        "Potassium",
+        "Roll",
+        "Pitch",
+        "Yaw",
+        "AccX",
+        "AccY",
+        "AccZ",
+        "Battery"
 
-    "Packet Number",
-
-    "Latitude",
-    "Longitude",
-
-    "Soil Moisture",
-
-    "Temperature",
-    "Humidity",
-
-    "Nitrogen",
-    "Phosphorus",
-    "Potassium",
-
-    "Roll",
-    "Pitch",
-    "Yaw",
-
-    "Acc X",
-    "Acc Y",
-    "Acc Z",
-
-    "Battery"
-
-  ];
+      ];
 
 
-  const rows =
-    sensorRows.map(
-      sample =>
+      const rows =
+        sensorRows.map(
+          s =>
+            [
+
+              s.timestamp,
+
+              s.packetNumber,
+
+              s.latitude,
+
+              s.longitude,
+
+              s.moisture,
+
+              s.temperature,
+
+              s.humidity,
+
+              s.nitrogen,
+
+              s.phosphorus,
+
+              s.potassium,
+
+              s.roll,
+
+              s.pitch,
+
+              s.yaw,
+
+              s.accX,
+
+              s.accY,
+
+              s.accZ,
+
+              s.battery
+
+            ]
+        );
+
+
+      const csv =
         [
-
-          sample.timestamp,
-
-          sample.packetNumber,
-
-          sample.latitude,
-          sample.longitude,
-
-          sample.moisture,
-
-          sample.temperature,
-          sample.humidity,
-
-          sample.nitrogen,
-          sample.phosphorus,
-          sample.potassium,
-
-          sample.roll,
-          sample.pitch,
-          sample.yaw,
-
-          sample.accX,
-          sample.accY,
-          sample.accZ,
-
-          sample.battery
-
+          header,
+          ...rows
         ]
-    );
+        .map(
+          row =>
+            row.join(",")
+        )
+        .join("\n");
 
 
-  const csv =
-    [
-      header,
-      ...rows
-    ]
-      .map(
-        row =>
-          row.join(",")
-      )
-      .join("\n");
+      const blob =
+        new Blob(
+          [csv],
+          {
+            type:
+              "text/csv"
+          }
+        );
 
 
-  const blob =
-    new Blob(
-      [csv],
-      {
-        type: "text/csv"
-      }
-    );
+      const link =
+        document.createElement(
+          "a"
+        );
 
 
-  const link =
-    document.createElement(
-      "a"
-    );
+      link.href =
+        URL.createObjectURL(
+          blob
+        );
 
 
-  link.href =
-    URL.createObjectURL(
-      blob
-    );
+      link.download =
+        "agrirover-telemetry.csv";
 
 
-  link.download =
-    "agrirover-telemetry.csv";
+      link.click();
 
-
-  link.click();
-
-
-  URL.revokeObjectURL(
-    link.href
+    }
   );
-}
 
 
-if (
-  el("exportHistoryCsv")
-) {
+/* =========================================================
+   TIMESTAMP DISPLAY
+========================================================= */
 
-  el("exportHistoryCsv").onclick =
-    exportHistoryCsv;
+function updateTimestampDisplay() {
+
+  setText(
+    "sensorTimestamp",
+    lastSensorUpdate
+      ? formatTimestamp(
+          lastSensorUpdate
+        )
+      : "No data received"
+  );
 
 }
 
 
 /* =========================================================
-   SEND COMMAND TO BASE STATION
+   CROP INPUTS
+========================================================= */
+
+function updateRecommendationInputs(
+  data
+) {
+
+  el(
+    "recN"
+  ).value =
+    data.nitrogen;
+
+
+  el(
+    "recP"
+  ).value =
+    data.phosphorus;
+
+
+  el(
+    "recK"
+  ).value =
+    data.potassium;
+
+
+  el(
+    "recMoisture"
+  ).value =
+    data.soil;
+
+
+  el(
+    "recTemp"
+  ).value =
+    data.temperature;
+
+
+  el(
+    "recHumidity"
+  ).value =
+    data.humidity;
+
+}
+
+
+/* =========================================================
+   SIMPLE CROP RECOMMENDATION
+========================================================= */
+
+const crops = [
+
+  {
+    name:
+      "Rice",
+
+    emoji:
+      "🌾",
+
+    base:
+      82
+  },
+
+  {
+    name:
+      "Maize",
+
+    emoji:
+      "🌽",
+
+    base:
+      74
+  },
+
+  {
+    name:
+      "Wheat",
+
+    emoji:
+      "🌿",
+
+    base:
+      63
+  }
+
+];
+
+
+function runCropRecommendation() {
+
+  const moisture =
+    Number(
+      el(
+        "recMoisture"
+      ).value
+    );
+
+
+  const temp =
+    Number(
+      el(
+        "recTemp"
+      ).value
+    );
+
+
+  const results =
+    crops
+      .map(
+        crop => {
+
+          let score =
+            crop.base;
+
+
+          if (
+            crop.name ===
+            "Rice"
+          ) {
+
+            score +=
+              moisture >
+              60
+                ? 8
+                : -8;
+
+
+            score +=
+              temp >
+              25
+                ? 4
+                : -3;
+
+          }
+
+
+          return {
+
+            ...crop,
+
+            score:
+              Math.max(
+                10,
+                Math.min(
+                  98,
+                  score
+                )
+              )
+
+          };
+
+        }
+      )
+      .sort(
+        (a, b) =>
+          b.score -
+          a.score
+      );
+
+
+  setText(
+    "bestCrop",
+    results[0]
+      .name
+  );
+
+
+  setText(
+    "cropScore",
+    `${results[0].score}%`
+  );
+
+
+  setText(
+    "cropReason",
+    "Recommendation generated from current NPK, moisture, temperature and humidity."
+  );
+
+
+  el(
+    "cropResults"
+  ).innerHTML =
+    results
+      .map(
+        crop =>
+          `
+          <div class="telemetry-card">
+
+            <span class="telemetry-icon">
+              ${crop.emoji}
+            </span>
+
+            <div>
+
+              <small>
+                ${crop.name}
+              </small>
+
+              <strong>
+                ${crop.score}%
+              </strong>
+
+            </div>
+
+          </div>
+          `
+      )
+      .join("");
+
+}
+
+
+el("runCropModel")
+  ?.addEventListener(
+    "click",
+    runCropRecommendation
+  );
+
+
+el("generateRecommendation")
+  ?.addEventListener(
+    "click",
+    () => {
+
+      navigate(
+        "crop"
+      );
+
+
+      runCropRecommendation();
+
+    }
+  );
+
+
+/* =========================================================
+   GUI -> BASE STATION COMMAND
 ========================================================= */
 
 async function sendBaseCommand(
@@ -2636,17 +3462,21 @@ async function sendBaseCommand(
       "Connect Base Station first"
     );
 
+
     return false;
+
   }
 
 
-  let writer = null;
+  let writer =
+    null;
 
 
   try {
 
     writer =
-      serialPort.writable
+      serialPort
+        .writable
         .getWriter();
 
 
@@ -2656,21 +3486,9 @@ async function sendBaseCommand(
 
     await writer.write(
       encoder.encode(
-        command + "\n"
+        command +
+        "\n"
       )
-    );
-
-
-    console.log(
-      "GUI -> BASE:",
-      command
-    );
-
-
-    addAlert(
-      "info",
-      "Command sent",
-      command
     );
 
 
@@ -2681,13 +3499,7 @@ async function sendBaseCommand(
   catch (error) {
 
     console.error(
-      "Command transmission error:",
       error
-    );
-
-
-    toast(
-      "Command transmission failed"
     );
 
 
@@ -2697,188 +3509,112 @@ async function sendBaseCommand(
 
   finally {
 
-    if (writer) {
+    writer
+      ?.releaseLock();
 
-      writer.releaseLock();
-
-    }
   }
+
 }
 
 
 /* =========================================================
-   MISSION COMMANDS
+   ROVER COMMANDS
 ========================================================= */
 
-if (
-  el("startMission")
-) {
-
-  el("startMission").onclick =
+el("startMission")
+  ?.addEventListener(
+    "click",
     async () => {
 
-      const sent =
-        await sendBaseCommand(
-          "ROVER,START"
-        );
+      await sendBaseCommand(
+        "ROVER,START"
+      );
 
 
-      if (sent) {
+      setText(
+        "missionStatus",
+        "Starting..."
+      );
 
-        setText(
-          "missionStatus",
-          "Starting..."
-        );
-
-      }
-    };
-}
+    }
+  );
 
 
-if (
-  el("pauseMission")
-) {
-
-  el("pauseMission").onclick =
+el("pauseMission")
+  ?.addEventListener(
+    "click",
     async () => {
 
       if (
         !state.paused
       ) {
 
-        const sent =
-          await sendBaseCommand(
-            "ROVER,PAUSE"
-          );
+        await sendBaseCommand(
+          "ROVER,PAUSE"
+        );
 
 
-        if (sent) {
-
-          state.paused =
-            true;
+        state.paused =
+          true;
 
 
-          setText(
-            "pauseMission",
-            "Resume"
-          );
-
-        }
+        setText(
+          "pauseMission",
+          "Resume"
+        );
 
       }
 
       else {
 
-        const sent =
-          await sendBaseCommand(
-            "ROVER,RESUME"
-          );
+        await sendBaseCommand(
+          "ROVER,RESUME"
+        );
 
 
-        if (sent) {
-
-          state.paused =
-            false;
+        state.paused =
+          false;
 
 
-          setText(
-            "pauseMission",
-            "Pause"
-          );
+        setText(
+          "pauseMission",
+          "Pause"
+        );
 
-        }
       }
-    };
-}
 
+    }
+  );
 
-/* =========================================================
-   TAKE SAMPLE
-========================================================= */
 
 async function takeSample() {
 
   await sendBaseCommand(
     "ROVER,SAMPLE"
   );
-}
-
-
-if (
-  el("takeSample")
-) {
-
-  el("takeSample").onclick =
-    takeSample;
 
 }
 
 
-if (
-  el("takeSample2")
-) {
+el("takeSample")
+  ?.addEventListener(
+    "click",
+    takeSample
+  );
 
-  el("takeSample2").onclick =
-    takeSample;
 
-}
+el("takeSample2")
+  ?.addEventListener(
+    "click",
+    takeSample
+  );
 
 
 /* =========================================================
-   EMERGENCY STOP
+   MANUAL COMMANDS
 ========================================================= */
 
-if (
-  el("emergencyBtn")
-) {
-
-  el("emergencyBtn").onclick =
-    async () => {
-
-      await sendBaseCommand(
-        "ROVER,ESTOP"
-      );
-
-
-      await sendBaseCommand(
-        "FERT,ALL_OFF"
-      );
-
-
-      state.emergency =
-        true;
-
-
-      setText(
-        "missionStatus",
-        "Emergency Stop"
-      );
-
-
-      setText(
-        "modeLabel",
-        "Emergency"
-      );
-
-
-      setText(
-        "pumpStatus",
-        "OFF"
-      );
-
-
-      toast(
-        "Emergency stop sent"
-      );
-    };
-}
-
-
-/* =========================================================
-   MANUAL ROVER CONTROL
-========================================================= */
-
-const roverCommandMap = {
+const movementCommands = {
 
   Forward:
     "FWD",
@@ -2908,48 +3644,44 @@ document
       button.onclick =
         async () => {
 
-          const action =
-            roverCommandMap[
+          const type =
+            movementCommands[
               button.dataset.command
             ];
 
 
           const speed =
-            el("manualSpeed")
-              ?.value ??
-              "0.5";
+            el(
+              "manualSpeed"
+            ).value;
 
 
           const command =
-            action === "STOP"
+            type ===
+            "STOP"
               ? "ROVER,STOP"
-              : `ROVER,${action},${speed}`;
+              : `ROVER,${type},${speed}`;
 
 
-          const sent =
-            await sendBaseCommand(
-              command
-            );
+          await sendBaseCommand(
+            command
+          );
 
 
-          if (sent) {
+          setText(
+            "manualCommand",
+            `Sent: ${command}`
+          );
 
-            setText(
-              "manualCommand",
-              `Sent: ${command}`
-            );
-
-          }
         };
+
     }
   );
 
 
-if (
-  el("manualSpeed")
-) {
-
-  el("manualSpeed").oninput =
+el("manualSpeed")
+  ?.addEventListener(
+    "input",
     event => {
 
       setText(
@@ -2957,30 +3689,27 @@ if (
         `${event.target.value} m/s`
       );
 
-    };
-}
+    }
+  );
 
 
-if (
-  el("manualStop")
-) {
-
-  el("manualStop").onclick =
+el("manualStop")
+  ?.addEventListener(
+    "click",
     () =>
       sendBaseCommand(
         "ROVER,STOP"
-      );
-
-}
+      )
+  );
 
 
 /* =========================================================
-   FERTILIZER VALVES
+   FERTILIZER
 ========================================================= */
 
 document
   .querySelectorAll(
-    ".valve[data-valve]"
+    ".valve"
   )
   .forEach(
     button => {
@@ -2992,1071 +3721,153 @@ document
             button.dataset.valve;
 
 
-          const currentlyOpen =
+          const isOpen =
             button.classList.contains(
               "on"
             );
 
 
           const action =
-            currentlyOpen
+            isOpen
               ? "CLOSE"
               : "OPEN";
 
 
-          await sendBaseCommand(
-            `FERT,${valve},${action}`
-          );
+          const sent =
+            await sendBaseCommand(
+              `FERT,${valve},${action}`
+            );
+
+
+          /*
+             Temporary UI feedback.
+
+             Later change this only
+             after Base Station ACK.
+          */
+
+          if (
+            sent
+          ) {
+
+            button.classList.toggle(
+              "on"
+            );
+
+
+            button
+              .querySelector(
+                "b"
+              )
+              .textContent =
+                action;
+
+          }
 
         };
+
     }
   );
 
 
-/* =========================================================
-   PUMP
-========================================================= */
-
-if (
-  el("startSpray")
-) {
-
-  el("startSpray").onclick =
+el("startSpray")
+  ?.addEventListener(
+    "click",
     async () => {
 
-      const sent =
-        await sendBaseCommand(
-          "FERT,PUMP,ON"
-        );
+      await sendBaseCommand(
+        "FERT,PUMP,ON"
+      );
 
 
-      if (sent) {
+      setText(
+        "pumpStatus",
+        "ON"
+      );
 
-        setText(
-          "pumpStatus",
-          "Starting..."
-        );
-
-      }
-    };
-}
+    }
+  );
 
 
-if (
-  el("pauseSpray")
-) {
-
-  el("pauseSpray").onclick =
+el("pauseSpray")
+  ?.addEventListener(
+    "click",
     async () => {
 
       await sendBaseCommand(
         "FERT,PUMP,OFF"
       );
 
-    };
-}
+
+      setText(
+        "pumpStatus",
+        "OFF"
+      );
+
+    }
+  );
 
 
-if (
-  el("stopSpray")
-) {
-
-  el("stopSpray").onclick =
+el("stopSpray")
+  ?.addEventListener(
+    "click",
     async () => {
 
       await sendBaseCommand(
         "FERT,ALL_OFF"
       );
 
-    };
-}
 
-
-/* =========================================================
-   BASE ACK
-
-   Example:
-   BASE,GUI,ACK,FERT,N,OPEN
-========================================================= */
-
-function processBaseAck(
-  parts
-) {
-
-  if (
-    parts[0] !== "FERT"
-  ) {
-
-    return;
-  }
-
-
-  const device =
-    parts[1];
-
-
-  const action =
-    parts[2];
-
-
-  if (
-    device === "PUMP"
-  ) {
-
-    const text =
-      action === "ON"
-        ? "Running"
-        : "OFF";
-
-
-    setText(
-      "pumpStatus",
-      text
-    );
-
-
-    setText(
-      "sprinklerPumpState",
-      text
-    );
-
-
-    return;
-  }
-
-
-  if (
-    device === "ALL_OFF"
-  ) {
-
-    document
-      .querySelectorAll(
-        ".valve"
-      )
-      .forEach(
-        button => {
-
-          button.classList.remove(
-            "on"
-          );
-
-
-          const label =
-            button.querySelector(
-              "b"
-            );
-
-
-          if (label) {
-
-            label.textContent =
-              "CLOSED";
-
-          }
-        }
+      setText(
+        "pumpStatus",
+        "OFF"
       );
-
-
-    setText(
-      "pumpStatus",
-      "OFF"
-    );
-
-
-    setText(
-      "sprinklerPumpState",
-      "OFF"
-    );
-
-
-    return;
-  }
-
-
-  updateValveUi(
-    device,
-    action === "OPEN"
-  );
-}
-
-
-/* =========================================================
-   VALVE UI
-========================================================= */
-
-function updateValveUi(
-  valve,
-  open
-) {
-
-  document
-    .querySelectorAll(
-      `.valve[data-valve="${valve}"]`
-    )
-    .forEach(
-      button => {
-
-        const label =
-          button.querySelector(
-            "b"
-          );
-
-
-        if (open) {
-
-          button.classList.add(
-            "on"
-          );
-
-
-          if (label) {
-
-            label.textContent =
-              "OPEN";
-
-          }
-
-        }
-
-        else {
-
-          button.classList.remove(
-            "on"
-          );
-
-
-          if (label) {
-
-            label.textContent =
-              "CLOSED";
-
-          }
-        }
-      }
-    );
-}
-
-
-/* =========================================================
-   CAMERA
-========================================================= */
-
-function setCameraStream(
-  url
-) {
-
-  cameraStreamUrl =
-    url;
-
-
-  const smallCamera =
-    el("roverCamera");
-
-
-  const largeCamera =
-    el("largeRoverCamera");
-
-
-  if (!url) {
-
-    setCameraOffline();
-
-    return;
-  }
-
-
-  if (smallCamera) {
-
-    smallCamera.src =
-      url;
-
-    smallCamera.style.display =
-      "block";
-
-  }
-
-
-  if (largeCamera) {
-
-    largeCamera.src =
-      url;
-
-    largeCamera.style.display =
-      "block";
-
-  }
-
-
-  if (
-    el("cameraPlaceholder")
-  ) {
-
-    el("cameraPlaceholder")
-      .style.display =
-        "none";
-
-  }
-
-
-  if (
-    el("largeCameraPlaceholder")
-  ) {
-
-    el("largeCameraPlaceholder")
-      .style.display =
-        "none";
-
-  }
-
-
-  setText(
-    "cameraStatusText",
-    "Live"
-  );
-
-
-  setText(
-    "cameraConnection",
-    "Connected"
-  );
-
-
-  setText(
-    "cameraStreamStatus",
-    "Streaming"
-  );
-
-
-  setText(
-    "cameraLiveLabel",
-    "● LIVE"
-  );
-
-
-  setText(
-    "largeCameraStatus",
-    "Live"
-  );
-
-
-  const dot =
-    el("cameraStatusDot");
-
-
-  dot?.classList.remove(
-    "disconnected-dot"
-  );
-
-
-  dot?.classList.add(
-    "connected-dot"
-  );
-}
-
-
-function setCameraOffline() {
-
-  if (
-    el("roverCamera")
-  ) {
-
-    el("roverCamera")
-      .style.display =
-        "none";
-
-  }
-
-
-  if (
-    el("largeRoverCamera")
-  ) {
-
-    el("largeRoverCamera")
-      .style.display =
-        "none";
-
-  }
-
-
-  if (
-    el("cameraPlaceholder")
-  ) {
-
-    el("cameraPlaceholder")
-      .style.display =
-        "flex";
-
-  }
-
-
-  if (
-    el("largeCameraPlaceholder")
-  ) {
-
-    el("largeCameraPlaceholder")
-      .style.display =
-        "flex";
-
-  }
-
-
-  setText(
-    "cameraStatusText",
-    "Offline"
-  );
-
-
-  setText(
-    "cameraConnection",
-    "Disconnected"
-  );
-
-
-  setText(
-    "cameraStreamStatus",
-    "Waiting"
-  );
-
-
-  setText(
-    "cameraLiveLabel",
-    "● OFFLINE"
-  );
-
-
-  setText(
-    "largeCameraStatus",
-    "Offline"
-  );
-
-
-  const dot =
-    el("cameraStatusDot");
-
-
-  dot?.classList.remove(
-    "connected-dot"
-  );
-
-
-  dot?.classList.add(
-    "disconnected-dot"
-  );
-}
-
-
-/* =========================================================
-   CROP RECOMMENDATION INPUTS
-========================================================= */
-
-function updateRecommendationInputs(
-  data
-) {
-
-  if (
-    el("recN")
-  ) {
-
-    el("recN").value =
-      data.nitrogen;
-
-  }
-
-
-  if (
-    el("recP")
-  ) {
-
-    el("recP").value =
-      data.phosphorus;
-
-  }
-
-
-  if (
-    el("recK")
-  ) {
-
-    el("recK").value =
-      data.potassium;
-
-  }
-
-
-  if (
-    el("recMoisture")
-  ) {
-
-    el("recMoisture").value =
-      data.soil;
-
-  }
-
-
-  if (
-    el("recTemp")
-  ) {
-
-    el("recTemp").value =
-      data.temperature;
-
-  }
-
-
-  if (
-    el("recHumidity")
-  ) {
-
-    el("recHumidity").value =
-      data.humidity;
-
-  }
-}
-
-
-/* =========================================================
-   CROP RECOMMENDATION
-========================================================= */
-
-const cropProfiles = [
-
-  {
-    name: "Rice",
-    emoji: "🌾",
-    base: 82
-  },
-
-  {
-    name: "Maize",
-    emoji: "🌽",
-    base: 75
-  },
-
-  {
-    name: "Wheat",
-    emoji: "🌿",
-    base: 65
-  },
-
-  {
-    name: "Mustard",
-    emoji: "🌼",
-    base: 55
-  }
-
-];
-
-
-function runCropRecommendation() {
-
-  const n =
-    Number(
-      el("recN")?.value ||
-      0
-    );
-
-
-  const p =
-    Number(
-      el("recP")?.value ||
-      0
-    );
-
-
-  const moisture =
-    Number(
-      el("recMoisture")
-        ?.value ||
-      0
-    );
-
-
-  const temperature =
-    Number(
-      el("recTemp")
-        ?.value ||
-      0
-    );
-
-
-  const results =
-    cropProfiles
-      .map(
-        crop => {
-
-          let score =
-            crop.base;
-
-
-          if (
-            crop.name ===
-            "Rice"
-          ) {
-
-            score +=
-              moisture >= 60
-                ? 8
-                : -10;
-
-
-            score +=
-              temperature >= 25
-                ? 4
-                : -4;
-
-          }
-
-
-          if (
-            crop.name ===
-            "Maize"
-          ) {
-
-            score +=
-              n >= 35
-                ? 5
-                : -5;
-
-
-            score +=
-              moisture >= 45 &&
-              moisture <= 70
-                ? 5
-                : -4;
-
-          }
-
-
-          if (
-            crop.name ===
-            "Wheat"
-          ) {
-
-            score +=
-              temperature < 25
-                ? 8
-                : -7;
-
-          }
-
-
-          if (
-            p < 15
-          ) {
-
-            score -= 4;
-
-          }
-
-
-          score =
-            Math.max(
-              10,
-              Math.min(
-                98,
-                Math.round(
-                  score
-                )
-              )
-            );
-
-
-          return {
-            ...crop,
-            score
-          };
-        }
-      )
-      .sort(
-        (a, b) =>
-          b.score -
-          a.score
-      );
-
-
-  if (
-    el("cropResults")
-  ) {
-
-    el("cropResults")
-      .innerHTML =
-        results
-          .map(
-            (crop, index) =>
-              `
-              <article class="result-card">
-
-                <header>
-
-                  <strong>
-                    ${crop.emoji}
-                    ${crop.name}
-                  </strong>
-
-                  <span
-                    class="badge ${
-                      index === 0
-                        ? "green"
-                        : "blue"
-                    }"
-                  >
-                    ${crop.score}%
-                  </span>
-
-                </header>
-
-                <div class="progress">
-
-                  <i
-                    style="width:${crop.score}%"
-                  ></i>
-
-                </div>
-
-              </article>
-              `
-          )
-          .join("");
-
-  }
-
-
-  setText(
-    "bestCrop",
-    results[0].name
-  );
-
-
-  setText(
-    "cropScore",
-    `${results[0].score}%`
-  );
-
-
-  setText(
-    "cropReason",
-    "Recommendation generated from the current NPK, soil moisture, temperature and humidity measurements."
-  );
-}
-
-
-if (
-  el("runCropModel")
-) {
-
-  el("runCropModel").onclick =
-    runCropRecommendation;
-
-}
-
-
-if (
-  el("generateRecommendation")
-) {
-
-  el("generateRecommendation").onclick =
-    () => {
-
-      navigate(
-        "crop"
-      );
-
-
-      runCropRecommendation();
-
-    };
-}
-
-
-/* =========================================================
-   HEATMAP
-
-   Your current telemetry does not contain
-   zone information yet.
-
-   So heatmap waits until zone support is
-   added to rover telemetry.
-========================================================= */
-
-function getHeatmapColor(
-  nutrient,
-  value
-) {
-
-  if (
-    value === undefined ||
-    value === null
-  ) {
-
-    return "#263544";
-  }
-
-
-  const thresholds = {
-
-    n:
-      [20, 35, 50, 70],
-
-    p:
-      [10, 18, 30, 45],
-
-    k:
-      [70, 100, 150, 200]
-
-  };
-
-
-  const range =
-    thresholds[
-      nutrient
-    ];
-
-
-  if (
-    value < range[0]
-  ) {
-
-    return "#2366dc";
-
-  }
-
-
-  if (
-    value < range[1]
-  ) {
-
-    return "#27a8d8";
-
-  }
-
-
-  if (
-    value < range[2]
-  ) {
-
-    return "#45c96b";
-
-  }
-
-
-  if (
-    value < range[3]
-  ) {
-
-    return "#efd83a";
-
-  }
-
-
-  return "#ef4d3f";
-}
-
-
-function renderHeatmap(
-  containerId
-) {
-
-  const container =
-    el(containerId);
-
-
-  if (!container)
-    return;
-
-
-  container.innerHTML =
-    "";
-
-
-  container.style
-    .gridTemplateColumns =
-      `repeat(${state.cols},1fr)`;
-
-
-  for (
-    let i = 1;
-    i <= state.totalZones;
-    i++
-  ) {
-
-    const zone =
-      `Z-${String(i)
-        .padStart(2, "0")}`;
-
-
-    const cell =
-      document.createElement(
-        "div"
-      );
-
-
-    cell.className =
-      "heat-cell";
-
-
-    cell.dataset.zone =
-      zone;
-
-
-    const measurement =
-      liveZoneData.get(
-        zone
-      );
-
-
-    if (!measurement) {
-
-      cell.classList.add(
-        "no-data"
-      );
-
-
-      cell.title =
-        `${zone}: No data`;
 
     }
-
-    else {
-
-      const value =
-        measurement[
-          selectedHeatmapNutrient
-        ];
-
-
-      cell.style.background =
-        getHeatmapColor(
-          selectedHeatmapNutrient,
-          value
-        );
-
-
-      cell.title =
-        `${zone}: ${selectedHeatmapNutrient.toUpperCase()} = ${value}`;
-    }
-
-
-    container.appendChild(
-      cell
-    );
-  }
-}
-
-
-function renderRealHeatmaps() {
-
-  renderHeatmap(
-    "heatmap"
   );
-
-
-  renderHeatmap(
-    "largeHeatmap"
-  );
-}
-
-
-if (
-  el("heatmapType")
-) {
-
-  el("heatmapType").onchange =
-    event => {
-
-      selectedHeatmapNutrient =
-        event.target.value;
-
-
-      if (
-        el("largeHeatmapType")
-      ) {
-
-        el("largeHeatmapType")
-          .value =
-            event.target.value;
-
-      }
-
-
-      renderRealHeatmaps();
-
-    };
-}
-
-
-if (
-  el("largeHeatmapType")
-) {
-
-  el("largeHeatmapType").onchange =
-    event => {
-
-      selectedHeatmapNutrient =
-        event.target.value;
-
-
-      if (
-        el("heatmapType")
-      ) {
-
-        el("heatmapType").value =
-          event.target.value;
-
-      }
-
-
-      renderRealHeatmaps();
-
-    };
-}
 
 
 /* =========================================================
-   PRESCRIPTION
+   EMERGENCY
 ========================================================= */
 
-function renderPrescription() {
+el("emergencyBtn")
+  ?.addEventListener(
+    "click",
+    async () => {
 
-  const dashboard =
-    el("prescriptionBody");
-
-
-  const full =
-    el("prescriptionBody2");
-
-
-  if (
-    prescriptions.length === 0
-  ) {
-
-    if (dashboard) {
-
-      dashboard.innerHTML =
-        `
-        <tr>
-          <td colspan="8">
-            Waiting for zone-wise soil measurements.
-          </td>
-        </tr>
-        `;
-
-    }
+      await sendBaseCommand(
+        "ROVER,ESTOP"
+      );
 
 
-    if (full) {
+      await sendBaseCommand(
+        "FERT,ALL_OFF"
+      );
 
-      full.innerHTML =
-        `
-        <tr>
-          <td colspan="9">
-            Waiting for zone-wise soil measurements.
-          </td>
-        </tr>
-        `;
+
+      state.emergency =
+        true;
+
+
+      setText(
+        "missionStatus",
+        "Emergency Stop"
+      );
+
+
+      setText(
+        "modeLabel",
+        "Emergency"
+      );
+
+
+      toast(
+        "Emergency stop sent"
+      );
 
     }
-  }
-}
+  );
 
 
 /* =========================================================
@@ -4069,30 +3880,9 @@ function addAlert(
   detail
 ) {
 
-  const icons = {
-
-    success:
-      "✓",
-
-    warning:
-      "⚠",
-
-    info:
-      "ℹ",
-
-    error:
-      "✕"
-
-  };
-
-
   systemAlerts.unshift({
 
     type,
-
-    icon:
-      icons[type] ||
-      "ℹ",
 
     title,
 
@@ -4105,43 +3895,37 @@ function addAlert(
   });
 
 
-  if (
-    systemAlerts.length >
-    100
-  ) {
-
-    systemAlerts =
-      systemAlerts.slice(
-        0,
-        100
-      );
-
-  }
-
-
   renderAlerts();
+
 }
 
 
 function renderAlerts() {
 
   const container =
-    el("allAlerts");
+    el(
+      "allAlerts"
+    );
 
 
-  if (!container)
+  if (
+    !container
+  )
     return;
 
 
   if (
-    systemAlerts.length === 0
+    systemAlerts.length ===
+    0
   ) {
 
     container.innerHTML =
       `
-      <article class="alert info">
+      <article class="alert">
 
-        <span>ℹ</span>
+        <span>
+          ℹ
+        </span>
 
         <div>
 
@@ -4155,13 +3939,16 @@ function renderAlerts() {
 
         </div>
 
-        <time>--</time>
+        <time>
+          --
+        </time>
 
       </article>
       `;
 
 
     return;
+
   }
 
 
@@ -4170,12 +3957,10 @@ function renderAlerts() {
       .map(
         alert =>
           `
-          <article
-            class="alert ${alert.type}"
-          >
+          <article class="alert">
 
             <span>
-              ${alert.icon}
+              ℹ
             </span>
 
             <div>
@@ -4198,14 +3983,13 @@ function renderAlerts() {
           `
       )
       .join("");
+
 }
 
 
-if (
-  el("clearAlerts")
-) {
-
-  el("clearAlerts").onclick =
+el("clearAlerts")
+  ?.addEventListener(
+    "click",
     () => {
 
       systemAlerts =
@@ -4214,85 +3998,35 @@ if (
 
       renderAlerts();
 
-    };
-}
+    }
+  );
 
 
 /* =========================================================
-   FIELD SETUP
+   HISTORY NAVIGATION
 ========================================================= */
 
-if (
-  el("generateGrid")
-) {
-
-  el("generateGrid").onclick =
-    () => {
-
-      state.rows =
-        Number(
-          el("fieldRows")
-            ?.value ||
-          8
-        );
-
-
-      state.cols =
-        Number(
-          el("fieldCols")
-            ?.value ||
-          8
-        );
-
-
-      state.totalZones =
-        state.rows *
-        state.cols;
-
-
-      renderRealHeatmaps();
-
-
-      toast(
-        `Field updated to ${state.rows} × ${state.cols}`
-      );
-
-    };
-}
-
-
-/* =========================================================
-   MISSION HISTORY NAVIGATION
-========================================================= */
-
-if (
-  el("openCurrentHistory")
-) {
-
-  el("openCurrentHistory").onclick =
+el("openCurrentHistory")
+  ?.addEventListener(
+    "click",
     () =>
       navigate(
         "sensor"
-      );
-
-}
+      )
+  );
 
 
 /* =========================================================
    INITIALIZATION
 ========================================================= */
 
-renderSensorHistory();
-
-renderRealHeatmaps();
-
-renderPrescription();
+renderHistory();
 
 renderAlerts();
 
 updateTimestampDisplay();
 
-updateBaseStationStatus(
+updateBaseStatus(
   false
 );
 
@@ -4300,7 +4034,8 @@ setRoverOnline(
   false
 );
 
-setCameraOffline();
+
+initializeRoverMaps();
 
 
 setText(
@@ -4309,17 +4044,15 @@ setText(
 );
 
 
-/*
-  Debug information.
-*/
-
 console.log(
-  "AgriRover GUI V8 loaded."
+  "AgriRover V10 loaded"
 );
 
+
 console.log(
-  "Expected telemetry:"
+  "Expected packet:"
 );
+
 
 console.log(
   "Data: PACKET,LAT,LON,SOIL,TEMP,HUMIDITY,N,P,K,ROLL,PITCH,YAW,ACC_X,ACC_Y,ACC_Z,BATTERY"
