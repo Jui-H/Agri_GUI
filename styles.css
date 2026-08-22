@@ -28,6 +28,11 @@
 }
 
 
+html {
+  scroll-behavior: smooth;
+}
+
+
 body {
 
   margin: 0;
@@ -56,11 +61,13 @@ select {
 
 
 button {
-
   cursor: pointer;
-
 }
 
+
+/* =========================================================
+   MAIN APP
+========================================================= */
 
 .app-shell {
 
@@ -88,8 +95,7 @@ button {
 
   display: flex;
 
-  flex-direction:
-    column;
+  flex-direction: column;
 
   padding:
     18px 12px;
@@ -271,7 +277,7 @@ button {
 
 
 /* =========================================================
-   MAIN
+   MAIN CONTENT
 ========================================================= */
 
 .main {
@@ -287,7 +293,7 @@ button {
 
 
 /* =========================================================
-   TOPBAR
+   TOP BAR
 ========================================================= */
 
 .topbar {
@@ -455,7 +461,17 @@ button {
 }
 
 
+.waiting-dot {
+
+  background:
+    var(--amber) !important;
+
+}
+
+
 .connect-btn {
+
+  white-space: nowrap;
 
   background:
     #12375f !important;
@@ -500,6 +516,8 @@ button {
     #ff6674;
 
   font-weight: 700;
+
+  white-space: nowrap;
 
 }
 
@@ -561,7 +579,7 @@ button {
 
 
 /* =========================================================
-   PANEL
+   PANELS
 ========================================================= */
 
 .panel {
@@ -615,8 +633,18 @@ button {
 }
 
 
+.panel h4 {
+
+  margin:
+    4px 0 14px;
+
+  font-size: 26px;
+
+}
+
+
 /* =========================================================
-   DASHBOARD
+   DASHBOARD GRID
 ========================================================= */
 
 .dashboard-grid {
@@ -684,7 +712,7 @@ button {
 
 
 /* =========================================================
-   BADGE
+   BADGES
 ========================================================= */
 
 .badge {
@@ -721,6 +749,17 @@ button {
 }
 
 
+.badge.red {
+
+  background:
+    #4a1f29;
+
+  color:
+    #ff8792;
+
+}
+
+
 .badge.amber {
 
   background:
@@ -733,7 +772,7 @@ button {
 
 
 /* =========================================================
-   METRICS
+   OVERVIEW / METRICS
 ========================================================= */
 
 .metric-grid {
@@ -813,11 +852,24 @@ button {
   background:
     var(--blue);
 
+  transition:
+    width 0.3s ease;
+
+}
+
+
+.progress.large {
+
+  height: 10px;
+
+  margin:
+    14px 0;
+
 }
 
 
 /* =========================================================
-   LIVE MAP
+   LIVE ROVER MAP
 ========================================================= */
 
 .map-live-status {
@@ -842,6 +894,10 @@ button {
 
   height: 300px;
 
+  position: relative;
+
+  z-index: 1;
+
   overflow: hidden;
 
   background:
@@ -860,6 +916,10 @@ button {
   width: 100%;
 
   height: 600px;
+
+  position: relative;
+
+  z-index: 1;
 
   overflow: hidden;
 
@@ -889,6 +949,8 @@ button {
 
 
 .rover-map-footer div {
+
+  min-width: 0;
 
   padding: 8px;
 
@@ -921,7 +983,16 @@ button {
 
   margin-top: 4px;
 
+  overflow: hidden;
+
+  color:
+    var(--text);
+
   font-size: 10px;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
 
 }
 
@@ -940,34 +1011,41 @@ button {
 }
 
 
-.rover-marker {
+/* =========================================================
+   LEAFLET STYLE FIXES
+========================================================= */
 
-  width: 36px;
+.leaflet-container {
 
-  height: 36px;
+  width: 100%;
 
-  display: grid;
-
-  place-items: center;
+  height: 100%;
 
   background:
-    #146cce;
+    #081522;
 
-  border:
-    3px solid white;
+  font-family:
+    Inter,
+    Arial,
+    sans-serif;
 
-  border-radius: 50%;
+}
 
-  font-size: 18px;
 
-  box-shadow:
-    0 0 0 4px
-    rgba(
-      47,
-      128,
-      237,
-      0.25
-    );
+.leaflet-control-zoom a {
+
+  background:
+    #f7f7f7;
+
+  color:
+    #111;
+
+}
+
+
+.leaflet-control-attribution {
+
+  font-size: 9px;
 
 }
 
@@ -986,12 +1064,65 @@ button {
 
 .leaflet-popup-content {
 
+  margin:
+    12px 14px;
+
   font-family:
     Inter,
     Arial,
     sans-serif;
 
   font-size: 11px;
+
+  line-height: 1.6;
+
+}
+
+
+/* =========================================================
+   ROVER DIRECTION POINTER
+========================================================= */
+
+.rover-direction-marker {
+
+  width: 42px;
+
+  height: 42px;
+
+  display: grid;
+
+  place-items: center;
+
+  border-radius: 50%;
+
+  background:
+    #146cce;
+
+  border:
+    3px solid white;
+
+  color: white;
+
+  font-size: 24px;
+
+  font-weight: 700;
+
+  line-height: 1;
+
+  box-shadow:
+    0 0 0 5px
+    rgba(
+      47,
+      128,
+      237,
+      0.25
+    );
+
+  transform-origin:
+    center center;
+
+  transition:
+    transform 0.3s ease;
 
 }
 
@@ -1036,13 +1167,16 @@ button {
   margin:
     4px 0 0;
 
+  color:
+    var(--text);
+
   font-size: 11px;
 
 }
 
 
 /* =========================================================
-   NPK
+   NPK GAUGES
 ========================================================= */
 
 .gauges {
@@ -1141,10 +1275,19 @@ button {
 
 .gauge small {
 
+  display: block;
+
   color:
     var(--muted);
 
   font-size: 9px;
+
+}
+
+
+.gauge > span {
+
+  font-size: 11px;
 
 }
 
@@ -1185,6 +1328,10 @@ button {
 }
 
 
+/* =========================================================
+   TIMESTAMP
+========================================================= */
+
 .data-timestamp {
 
   display: grid;
@@ -1200,6 +1347,8 @@ button {
 
 
 .data-timestamp > div {
+
+  min-width: 0;
 
   padding: 9px;
 
@@ -1218,16 +1367,29 @@ button {
 
   display: block;
 
+  margin-bottom: 5px;
+
   color:
     var(--muted);
 
   font-size: 9px;
 
+  text-transform: uppercase;
+
+}
+
+
+.data-timestamp strong {
+
+  display: block;
+
+  font-size: 10px;
+
 }
 
 
 /* =========================================================
-   PLACEHOLDER
+   HEATMAP PLACEHOLDER
 ========================================================= */
 
 .heatmap-placeholder {
@@ -1264,7 +1426,7 @@ button {
 
 
 /* =========================================================
-   CROP
+   CROP RECOMMENDATION
 ========================================================= */
 
 .crop-best {
@@ -1322,7 +1484,16 @@ button {
 }
 
 
+.crop-best p {
+
+  margin: 0;
+
+}
+
+
 .score {
+
+  width: 62px;
 
   height: 62px;
 
@@ -1340,8 +1511,33 @@ button {
 }
 
 
+.score strong {
+
+  font-size: 16px;
+
+}
+
+
+.score small {
+
+  font-size: 7px;
+
+}
+
+
+.result-cards {
+
+  display: grid;
+
+  gap: 9px;
+
+  margin-top: 12px;
+
+}
+
+
 /* =========================================================
-   TELEMETRY
+   LIVE TELEMETRY
 ========================================================= */
 
 .telemetry-live-status {
@@ -1376,6 +1572,8 @@ button {
 
 .telemetry-info-bar div {
 
+  min-width: 0;
+
   padding: 11px;
 
   background:
@@ -1407,7 +1605,11 @@ button {
 
   margin-top: 6px;
 
+  overflow: hidden;
+
   font-size: 13px;
+
+  text-overflow: ellipsis;
 
 }
 
@@ -1489,6 +1691,11 @@ button {
 
   font-size: 9px;
 
+  text-transform: uppercase;
+
+  letter-spacing:
+    0.04em;
+
 }
 
 
@@ -1497,6 +1704,9 @@ button {
   display: block;
 
   margin-top: 6px;
+
+  color:
+    var(--text);
 
   font-size: 22px;
 
@@ -1515,7 +1725,11 @@ button {
 
 .telemetry-gps strong {
 
+  max-width: 180px;
+
   font-size: 12px;
+
+  word-break: break-word;
 
 }
 
@@ -1602,6 +1816,8 @@ button {
 
   font-size: 9px;
 
+  text-transform: uppercase;
+
 }
 
 
@@ -1627,7 +1843,7 @@ button {
 
 
 /* =========================================================
-   RADIO STATUS
+   RSSI / SNR
 ========================================================= */
 
 .telemetry-secondary {
@@ -1671,8 +1887,19 @@ button {
 }
 
 
+.telemetry-secondary strong {
+
+  display: block;
+
+  margin-top: 5px;
+
+  font-size: 14px;
+
+}
+
+
 /* =========================================================
-   RAW CONSOLE
+   RAW TELEMETRY CONSOLE
 ========================================================= */
 
 .telemetry-console {
@@ -1754,6 +1981,13 @@ button {
 }
 
 
+.rover-info-panel {
+
+  min-width: 0;
+
+}
+
+
 .rover-info-list {
 
   display: grid;
@@ -1771,6 +2005,8 @@ button {
 
   justify-content:
     space-between;
+
+  align-items: center;
 
   gap: 10px;
 
@@ -1799,9 +2035,15 @@ button {
 
 .rover-info-list strong {
 
+  max-width: 65%;
+
+  overflow: hidden;
+
   text-align: right;
 
   font-size: 10px;
+
+  text-overflow: ellipsis;
 
 }
 
@@ -1826,6 +2068,14 @@ button {
   color: white;
 
   font-size: 11px;
+
+}
+
+
+.btn:hover {
+
+  filter:
+    brightness(1.08);
 
 }
 
@@ -1907,7 +2157,7 @@ button {
 
 
 /* =========================================================
-   VALVES
+   FERTILIZER / VALVES
 ========================================================= */
 
 .valves {
@@ -1977,6 +2227,13 @@ button {
    FORMS
 ========================================================= */
 
+.form-panel {
+
+  max-width: 1000px;
+
+}
+
+
 .form-grid {
 
   display: grid;
@@ -2035,7 +2292,7 @@ button {
 
 
 /* =========================================================
-   MANUAL
+   MANUAL CONTROL
 ========================================================= */
 
 .manual-card {
@@ -2137,6 +2394,23 @@ button {
 }
 
 
+.manual-info label {
+
+  display: grid;
+
+  gap: 8px;
+
+  margin:
+    20px 0;
+
+  color:
+    var(--muted);
+
+  font-size: 11px;
+
+}
+
+
 /* =========================================================
    HISTORY
 ========================================================= */
@@ -2153,6 +2427,16 @@ button {
   gap: 9px;
 
   margin-bottom: 10px;
+
+  padding: 11px;
+
+  background:
+    #0a1724;
+
+  border:
+    1px solid var(--line);
+
+  border-radius: 8px;
 
 }
 
@@ -2173,6 +2457,8 @@ button {
 
 .history-toolbar input {
 
+  min-width: 135px;
+
   padding: 8px;
 
   background:
@@ -2184,6 +2470,19 @@ button {
   border-radius: 6px;
 
   color: white;
+
+}
+
+
+.history-summary {
+
+  margin:
+    0 0 9px;
+
+  color:
+    var(--muted);
+
+  font-size: 10px;
 
 }
 
@@ -2223,6 +2522,9 @@ td {
 
 
 th {
+
+  background:
+    #0a1724;
 
   color:
     #a9bfd1;
@@ -2277,11 +2579,42 @@ th {
 }
 
 
-.alert small,
+.alert small {
+
+  margin-top: 2px;
+
+  color:
+    var(--muted);
+
+}
+
+
 .alert time {
 
   color:
     var(--muted);
+
+  font-size: 8px;
+
+}
+
+
+/* =========================================================
+   EMPTY STATES
+========================================================= */
+
+.empty-state {
+
+  min-height: 180px;
+
+  display: grid;
+
+  place-items: center;
+
+  color:
+    var(--muted);
+
+  text-align: center;
 
 }
 
@@ -2300,6 +2633,8 @@ th {
 
   z-index: 50;
 
+  max-width: 350px;
+
   padding:
     12px 16px;
 
@@ -2314,6 +2649,8 @@ th {
   color: white;
 
   opacity: 0;
+
+  pointer-events: none;
 
   transform:
     translateY(120px);
@@ -2377,6 +2714,13 @@ th {
 
   }
 
+
+  .topbar .status-chip {
+
+    display: none;
+
+  }
+
 }
 
 
@@ -2386,6 +2730,9 @@ th {
 
     transform:
       translateX(-100%);
+
+    transition:
+      transform 0.25s ease;
 
   }
 
@@ -2440,6 +2787,15 @@ th {
   }
 
 
+  .clock {
+
+    min-width: 0;
+
+    flex: 1;
+
+  }
+
+
   .metric-grid,
   .telemetry-info-bar,
   .imu-grid {
@@ -2465,6 +2821,21 @@ th {
 
   }
 
+
+  .data-timestamp {
+
+    grid-template-columns:
+      1fr;
+
+  }
+
+
+  .large-rover-map {
+
+    height: 500px;
+
+  }
+
 }
 
 
@@ -2473,11 +2844,40 @@ th {
   .metric-grid,
   .telemetry-grid,
   .telemetry-info-bar,
+  .telemetry-secondary,
   .imu-grid,
   .rover-map-footer {
 
     grid-template-columns:
       1fr;
+
+  }
+
+
+  .gauges {
+
+    flex-wrap: wrap;
+
+  }
+
+
+  .page {
+
+    padding: 12px;
+
+  }
+
+
+  .rover-live-map {
+
+    height: 260px;
+
+  }
+
+
+  .large-rover-map {
+
+    height: 420px;
 
   }
 
