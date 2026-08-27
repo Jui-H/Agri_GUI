@@ -1,26 +1,10 @@
 /* =========================================================
-   AGRIROVER GUI V13
+   AGRIROVER GUI V14
 
-   AUTONOMOUS WORKFLOW
-
-   Crop Selection
-        ↓
-   Rover Assignment
-        ↓
-   Autonomous Sampling
-        ↓
-   GPS + Measured NPK + Required NPK
-        ↓
-   Deficiency Severity
-        ↓
-   IDW Field Heatmap
-        ↓
-   SAMPLING_DONE
-        ↓
-   Fertilizer Prescription
-        ↓
-   Autonomous Fertilization
-
+   MAIN FIX:
+   Accepts both:
+   Data: 1,2,3,...
+   Data : 1,2,3,...
 
    TELEMETRY — 18 FIELDS
 
@@ -46,7 +30,7 @@
 
 
 /* =========================================================
-   BARC OPTIMUM CROP DATA
+   BARC CROP OPTIMUM DATA
 ========================================================= */
 
 const CROP_DATA = [
@@ -278,7 +262,7 @@ let baseStationConnected =
 
 
 /* =========================================================
-   TELEMETRY STATE
+   TELEMETRY
 ========================================================= */
 
 let latestTelemetry =
@@ -292,7 +276,7 @@ let lastSensorUpdate =
 
 
 /* =========================================================
-   ROVER GPS MAP
+   MAP
 ========================================================= */
 
 let roverMap =
@@ -321,7 +305,7 @@ let mapHasCenteredOnce =
 
 
 /* =========================================================
-   HEATMAP STATE
+   HEATMAP
 ========================================================= */
 
 let deficiencyNutrient =
@@ -342,10 +326,12 @@ let samplePackets =
 ========================================================= */
 
 const HISTORY_KEY =
-  "agriroverTelemetryV13";
+  "agriroverTelemetryV14";
+
 
 let sensorRows =
   loadHistory();
+
 
 let systemAlerts =
   [];
@@ -371,6 +357,7 @@ function setText(
 
   const element =
     el(id);
+
 
   if (
     element
@@ -407,8 +394,12 @@ function validGps(
 ) {
 
   return (
-    Number.isFinite(latitude) &&
-    Number.isFinite(longitude) &&
+    Number.isFinite(
+      latitude
+    ) &&
+    Number.isFinite(
+      longitude
+    ) &&
     latitude !== 0 &&
     longitude !== 0 &&
     latitude >= -90 &&
@@ -433,6 +424,7 @@ function formatTimestamp(
   return date.toLocaleString(
     "en-GB",
     {
+
       day:
         "2-digit",
 
@@ -453,6 +445,7 @@ function formatTimestamp(
 
       hour12:
         true
+
     }
   );
 
@@ -464,9 +457,14 @@ function toast(
 ) {
 
   const box =
-    el("toast");
+    el(
+      "toast"
+    );
 
-  if (!box)
+
+  if (
+    !box
+  )
     return;
 
 
@@ -548,10 +546,13 @@ function navigate(
       ".page"
     )
     .forEach(
-      page =>
+      page => {
+
         page.classList.remove(
           "active"
-        )
+        );
+
+      }
     );
 
 
@@ -560,10 +561,13 @@ function navigate(
       ".nav-item"
     )
     .forEach(
-      button =>
+      button => {
+
         button.classList.remove(
           "active"
-        )
+        );
+
+      }
     );
 
 
@@ -584,7 +588,9 @@ function navigate(
     );
 
 
-  el("sidebar")
+  el(
+    "sidebar"
+  )
     ?.classList
     .remove(
       "open"
@@ -652,20 +658,27 @@ document
   );
 
 
-el("menuBtn")
+el(
+  "menuBtn"
+)
   ?.addEventListener(
     "click",
-    () =>
-      el("sidebar")
+    () => {
+
+      el(
+        "sidebar"
+      )
         ?.classList
         .toggle(
           "open"
-        )
+        );
+
+    }
   );
 
 
 /* =========================================================
-   BASE STATION SERIAL CONNECTION
+   BASE STATION CONNECTION
 ========================================================= */
 
 async function connectBaseStation() {
@@ -688,6 +701,7 @@ async function connectBaseStation() {
     alert(
       "Web Serial is not supported. Use desktop Chrome or Microsoft Edge."
     );
+
 
     return;
 
@@ -712,6 +726,7 @@ async function connectBaseStation() {
 
 
     await serialPort.open({
+
       baudRate:
         115200,
 
@@ -726,6 +741,7 @@ async function connectBaseStation() {
 
       flowControl:
         "none"
+
     });
 
 
@@ -767,14 +783,6 @@ async function connectBaseStation() {
 
     updateBaseStatus(
       false
-    );
-
-
-    addAlert(
-      "error",
-      "Connection failed",
-      error.message ||
-      error.name
     );
 
 
@@ -850,11 +858,6 @@ async function disconnectBaseStation() {
     false
   );
 
-
-  toast(
-    "Base Station disconnected"
-  );
-
 }
 
 
@@ -918,36 +921,13 @@ function updateBaseStatus(
 }
 
 
-el("connectBaseStation")
+el(
+  "connectBaseStation"
+)
   ?.addEventListener(
     "click",
     connectBaseStation
   );
-
-
-if (
-  navigator.serial
-) {
-
-  navigator.serial
-    .addEventListener(
-      "disconnect",
-      () => {
-
-        serialPort =
-          null;
-
-        baseStationConnected =
-          false;
-
-        updateBaseStatus(
-          false
-        );
-
-      }
-    );
-
-}
 
 
 /* =========================================================
@@ -984,11 +964,15 @@ async function readSerialLoop() {
             await serialReader.read();
 
 
-          if (done)
+          if (
+            done
+          )
             break;
 
 
-          if (!value)
+          if (
+            !value
+          )
             continue;
 
 
@@ -1021,7 +1005,9 @@ async function readSerialLoop() {
               rawLine.trim();
 
 
-            if (!line)
+            if (
+              !line
+            )
               continue;
 
 
@@ -1076,97 +1062,20 @@ async function readSerialLoop() {
 
 
 /* =========================================================
-   SEND COMMAND
-========================================================= */
-
-async function sendBaseCommand(
-  command
-) {
-
-  if (
-    !baseStationConnected ||
-    !serialPort ||
-    !serialPort.writable
-  ) {
-
-    toast(
-      "Connect Base Station first"
-    );
-
-    return false;
-
-  }
-
-
-  let writer =
-    null;
-
-
-  try {
-
-    writer =
-      serialPort
-        .writable
-        .getWriter();
-
-
-    await writer.write(
-      new TextEncoder()
-        .encode(
-          command +
-          "\n"
-        )
-    );
-
-
-    addAlert(
-      "info",
-      "Command sent",
-      command
-    );
-
-
-    return true;
-
-  }
-
-  catch (error) {
-
-    console.error(
-      error
-    );
-
-
-    toast(
-      "Command transmission failed"
-    );
-
-
-    return false;
-
-  }
-
-  finally {
-
-    writer
-      ?.releaseLock();
-
-  }
-
-}
-
-
-/* =========================================================
-   SERIAL PROTOCOL
+   SERIAL LINE PROCESSOR
 ========================================================= */
 
 function processSerialLine(
   line
 ) {
 
-  /*
-     Rover status strings
-  */
+  line =
+    line.trim();
+
+
+  /* =====================================================
+     EVENT STRINGS
+  ===================================================== */
 
   if (
     line ===
@@ -1207,6 +1116,7 @@ function processSerialLine(
       "FERTILIZING"
     );
 
+
     return;
 
   }
@@ -1232,42 +1142,33 @@ function processSerialLine(
     )
   ) {
 
+    const parts =
+      line.split(",");
+
+
     handleCropAck(
-      line.split(",")[2]
+      parts[2]
     );
+
 
     return;
 
   }
 
 
-  /*
-     Base ACK
-  */
+  /* =====================================================
+     TELEMETRY
+
+     Accept:
+     Data:
+     Data :
+     DATA:
+     DATA :
+  ===================================================== */
 
   if (
-    line.startsWith(
-      "BASE,GUI,ACK,"
-    )
-  ) {
-
-    processBaseAck(
-      line.split(",")
-        .slice(3)
-    );
-
-    return;
-
-  }
-
-
-  /*
-     Telemetry
-  */
-
-  if (
-    line.startsWith(
-      "Data:"
+    /^data\s*:/i.test(
+      line
     )
   ) {
 
@@ -1293,41 +1194,59 @@ function processSerialLine(
   }
 
 
+  /* =====================================================
+     RAW CSV
+  ===================================================== */
+
   if (
-    line.includes(",") &&
-    line.split(",")
-      .length === 18
+    line.includes(",")
   ) {
 
-    const telemetry =
-      parseTelemetry(
-        line
-      );
+    const fields =
+      line
+        .split(",")
+        .map(
+          item =>
+            item.trim()
+        );
 
 
     if (
-      telemetry
+      fields.length ===
+      18
     ) {
 
-      processTelemetry(
+      const telemetry =
+        parseTelemetry(
+          line
+        );
+
+
+      if (
         telemetry
-      );
+      ) {
+
+        processTelemetry(
+          telemetry
+        );
+
+      }
+
+
+      return;
 
     }
-
-
-    return;
 
   }
 
 
-  /*
-     LoRa signal info
-  */
+  /* =====================================================
+     RSSI
+  ===================================================== */
 
   if (
-    line.startsWith(
-      "RSSI:"
+    /^rssi\s*:/i.test(
+      line
     )
   ) {
 
@@ -1354,9 +1273,13 @@ function processSerialLine(
   }
 
 
+  /* =====================================================
+     SNR
+  ===================================================== */
+
   if (
-    line.startsWith(
-      "SNR:"
+    /^snr\s*:/i.test(
+      line
     )
   ) {
 
@@ -1394,18 +1317,19 @@ function parseTelemetry(
     line.trim();
 
 
-  if (
-    clean.startsWith(
-      "Data:"
-    )
-  ) {
+  /*
+     Removes:
+     Data:
+     Data :
+     DATA:
+     DATA :
+  */
 
-    clean =
-      clean
-        .substring(5)
-        .trim();
-
-  }
+  clean =
+    clean.replace(
+      /^data\s*:\s*/i,
+      ""
+    );
 
 
   const values =
@@ -1417,13 +1341,30 @@ function parseTelemetry(
       );
 
 
+  console.log(
+    "Telemetry raw:",
+    clean
+  );
+
+
+  console.log(
+    "Telemetry field count:",
+    values.length
+  );
+
+
   if (
-    values.length !== 18
+    values.length !==
+    18
   ) {
 
-    console.warn(
-      `Expected 18 telemetry fields, received ${values.length}`,
-      clean
+    console.error(
+      `Telemetry rejected: expected 18 fields, received ${values.length}`
+    );
+
+
+    console.log(
+      values
     );
 
 
@@ -1530,24 +1471,49 @@ function parseTelemetry(
   };
 
 
-  const numeric =
-    Object
-      .entries(
-        data
-      )
-      .filter(
-        ([key]) =>
-          key !==
-          "timestamp"
-      )
-      .map(
-        ([, value]) =>
-          value
-      );
+  const numericValues = [
+
+    data.packetNumber,
+
+    data.latitude,
+
+    data.longitude,
+
+    data.temperature,
+
+    data.humidity,
+
+    data.nitrogen,
+
+    data.phosphorus,
+
+    data.potassium,
+
+    data.requiredN,
+
+    data.requiredP,
+
+    data.requiredK,
+
+    data.roll,
+
+    data.pitch,
+
+    data.yaw,
+
+    data.accX,
+
+    data.accY,
+
+    data.accZ,
+
+    data.battery
+
+  ];
 
 
   if (
-    numeric.some(
+    numericValues.some(
       value =>
         Number.isNaN(
           value
@@ -1555,8 +1521,12 @@ function parseTelemetry(
     )
   ) {
 
-    console.warn(
-      "Invalid numeric telemetry",
+    console.error(
+      "Telemetry rejected: invalid numeric value"
+    );
+
+
+    console.log(
       data
     );
 
@@ -1566,845 +1536,19 @@ function parseTelemetry(
   }
 
 
+  console.log(
+    "Telemetry parsed:",
+    data
+  );
+
+
   return data;
 
 }
 
 
 /* =========================================================
-   CROP BUTTONS
-========================================================= */
-
-function cropIcon(
-  crop
-) {
-
-  if (
-    crop.type.includes(
-      "Cereal"
-    )
-  ) {
-
-    return "🌾";
-
-  }
-
-
-  if (
-    crop.type.includes(
-      "Oilseed"
-    )
-  ) {
-
-    return "🌼";
-
-  }
-
-
-  return "🌱";
-
-}
-
-
-function renderCropButtons() {
-
-  const container =
-    el(
-      "cropButtonGrid"
-    );
-
-
-  if (
-    !container
-  )
-    return;
-
-
-  container.innerHTML =
-    CROP_DATA
-      .map(
-        crop =>
-          `
-          <button
-            class="crop-select-btn"
-            data-crop="${crop.key}"
-          >
-
-            <span class="crop-check">
-              ✓
-            </span>
-
-            <span class="crop-card-icon">
-              ${cropIcon(crop)}
-            </span>
-
-            <div>
-
-              <strong>
-                ${crop.name}
-              </strong>
-
-              <small>
-                ${crop.bangla}
-              </small>
-
-              <span class="crop-type">
-                ${crop.type}
-              </span>
-
-            </div>
-
-          </button>
-          `
-      )
-      .join("");
-
-
-  container
-    .querySelectorAll(
-      ".crop-select-btn"
-    )
-    .forEach(
-      button => {
-
-        button.onclick =
-          () =>
-            selectCrop(
-              button.dataset.crop
-            );
-
-      }
-    );
-
-}
-
-
-/* =========================================================
-   SELECT CROP
-========================================================= */
-
-function selectCrop(
-  key
-) {
-
-  const crop =
-    cropByKey(
-      key
-    );
-
-
-  if (
-    !crop
-  )
-    return;
-
-
-  state.selectedCrop =
-    crop;
-
-
-  state.cropSent =
-    false;
-
-
-  document
-    .querySelectorAll(
-      ".crop-select-btn"
-    )
-    .forEach(
-      button => {
-
-        button.classList.toggle(
-          "selected",
-          button.dataset.crop ===
-            key
-        );
-
-      }
-    );
-
-
-  setText(
-    "selectedCropName",
-    crop.name
-  );
-
-
-  setText(
-    "selectedCropBangla",
-    crop.bangla
-  );
-
-
-  setText(
-    "selectedCropIcon",
-    cropIcon(
-      crop
-    )
-  );
-
-
-  setText(
-    "cropOptN",
-    crop.n
-  );
-
-
-  setText(
-    "cropOptP",
-    crop.p
-  );
-
-
-  setText(
-    "cropOptK",
-    crop.k
-  );
-
-
-  setText(
-    "cropCondition",
-    crop.condition
-  );
-
-
-  setText(
-    "cropSelectionStatus",
-    "Selected — not sent"
-  );
-
-
-  setText(
-    "cropCommandPreview",
-    `ROVER,CROP,${crop.key}`
-  );
-
-
-  setText(
-    "dashboardCrop",
-    crop.name
-  );
-
-
-  setText(
-    "sideCrop",
-    crop.name
-  );
-
-
-  setText(
-    "dashboardTargetNpk",
-    `N ${crop.n} • P ${crop.p} • K ${crop.k} kg/ha`
-  );
-
-
-  setText(
-    "dashboardHeatmapCrop",
-    `${crop.name} — Nitrogen`
-  );
-
-
-  setText(
-    "largeHeatmapCrop",
-    `${crop.name} — Nitrogen`
-  );
-
-
-  setText(
-    "prescriptionCrop",
-    crop.name
-  );
-
-
-  setText(
-    "prescriptionCropBangla",
-    crop.bangla
-  );
-
-
-  setText(
-    "prescriptionOptN",
-    crop.n
-  );
-
-
-  setText(
-    "prescriptionOptP",
-    crop.p
-  );
-
-
-  setText(
-    "prescriptionOptK",
-    crop.k
-  );
-
-
-  resetMissionSamples();
-
-
-  updateSequence(
-    "CROP"
-  );
-
-
-  toast(
-    `${crop.name} selected`
-  );
-
-}
-
-
-/* =========================================================
-   SEND CROP
-========================================================= */
-
-async function sendCropAssignment() {
-
-  if (
-    !state.selectedCrop
-  ) {
-
-    toast(
-      "Select a crop first"
-    );
-
-    return;
-
-  }
-
-
-  const command =
-    `ROVER,CROP,${state.selectedCrop.key}`;
-
-
-  const sent =
-    await sendBaseCommand(
-      command
-    );
-
-
-  if (
-    sent
-  ) {
-
-    state.cropSent =
-      true;
-
-
-    setText(
-      "cropSelectionStatus",
-      "Assignment sent"
-    );
-
-
-    setText(
-      "missionStatus",
-      "Crop assigned"
-    );
-
-
-    setText(
-      "overviewState",
-      "Crop assigned"
-    );
-
-
-    addAlert(
-      "success",
-      "Crop assignment sent",
-      `${state.selectedCrop.name} (${state.selectedCrop.bangla})`
-    );
-
-
-    toast(
-      `${state.selectedCrop.name} assignment sent`
-    );
-
-  }
-
-}
-
-
-el("sendCropAssignment")
-  ?.addEventListener(
-    "click",
-    sendCropAssignment
-  );
-
-
-function handleCropAck(
-  key
-) {
-
-  const crop =
-    cropByKey(
-      key
-    );
-
-
-  if (
-    !crop
-  )
-    return;
-
-
-  if (
-    !state.selectedCrop ||
-    state.selectedCrop.key !==
-      crop.key
-  ) {
-
-    selectCrop(
-      crop.key
-    );
-
-  }
-
-
-  state.cropSent =
-    true;
-
-
-  setText(
-    "cropSelectionStatus",
-    "Rover acknowledged"
-  );
-
-
-  toast(
-    "Crop assignment acknowledged"
-  );
-
-}
-
-
-/* =========================================================
-   MISSION STATES
-========================================================= */
-
-function handleSamplingStarted() {
-
-  state.samplingState =
-    "SAMPLING";
-
-
-  heatmapFinalized =
-    false;
-
-
-  setText(
-    "missionStatus",
-    "Sampling"
-  );
-
-
-  setText(
-    "dashboardSampling",
-    "Sampling"
-  );
-
-
-  setText(
-    "sideSamplingStatus",
-    "Sampling"
-  );
-
-
-  setText(
-    "telemetrySamplingState",
-    "SAMPLING"
-  );
-
-
-  setText(
-    "sprinklerSamplingState",
-    "Sampling in progress"
-  );
-
-
-  setText(
-    "heatmapStatusText",
-    "Collecting 1 ft² GPS-referenced sampling points..."
-  );
-
-
-  setText(
-    "heatmapGenerationState",
-    "Live sampling"
-  );
-
-
-  setText(
-    "fullHeatmapStatus",
-    "Sampling"
-  );
-
-
-  updateSequence(
-    "SAMPLING"
-  );
-
-
-  addAlert(
-    "info",
-    "Sampling started",
-    "Rover is autonomously collecting field samples."
-  );
-
-}
-
-
-async function handleSamplingDone() {
-
-  state.samplingState =
-    "DONE";
-
-
-  heatmapFinalized =
-    true;
-
-
-  setText(
-    "missionStatus",
-    "Sampling complete"
-  );
-
-
-  setText(
-    "dashboardSampling",
-    "Complete"
-  );
-
-
-  setText(
-    "sideSamplingStatus",
-    "Complete"
-  );
-
-
-  setText(
-    "telemetrySamplingState",
-    "DONE"
-  );
-
-
-  setText(
-    "sprinklerSamplingState",
-    "Complete"
-  );
-
-
-  setText(
-    "sprinklerHeatmapState",
-    "Generated"
-  );
-
-
-  setText(
-    "heatmapGenerationState",
-    "Complete"
-  );
-
-
-  setText(
-    "heatmapStatusText",
-    `Sampling complete — ${missionSamples.length} points interpolated.`
-  );
-
-
-  setText(
-    "fullHeatmapStatus",
-    `${missionSamples.length} samples • Complete`
-  );
-
-
-  renderDeficiencyHeatmaps();
-
-
-  updateDeficiencySummary();
-
-
-  updatePrescription();
-
-
-  updateSequence(
-    "HEATMAP"
-  );
-
-
-  addAlert(
-    "success",
-    "Sampling complete",
-    `${missionSamples.length} samples collected and heatmap generated.`
-  );
-
-
-  toast(
-    "Sampling complete — deficiency heatmap generated"
-  );
-
-
-  await startAutonomousFertilization();
-
-}
-
-
-async function startAutonomousFertilization() {
-
-  if (
-    !missionSamples.length
-  ) {
-
-    setFertilizationState(
-      "WAITING FOR SAMPLES"
-    );
-
-    return;
-
-  }
-
-
-  const prescription =
-    calculatePrescription();
-
-
-  if (
-    !prescription
-  )
-    return;
-
-
-  setFertilizationState(
-    "STARTING"
-  );
-
-
-  const summaryCommand =
-    `FERT,PRESCRIPTION,` +
-    `${prescription.avgN.toFixed(2)},` +
-    `${prescription.avgP.toFixed(2)},` +
-    `${prescription.avgK.toFixed(2)}`;
-
-
-  const sent =
-    await sendBaseCommand(
-      summaryCommand
-    );
-
-
-  if (
-    !sent
-  ) {
-
-    setFertilizationState(
-      "READY"
-    );
-
-    return;
-
-  }
-
-
-  const started =
-    await sendBaseCommand(
-      "FERT,AUTO_START"
-    );
-
-
-  if (
-    started
-  ) {
-
-    setFertilizationState(
-      "AUTO START SENT"
-    );
-
-
-    updateSequence(
-      "FERTILIZING"
-    );
-
-  }
-
-}
-
-
-function setFertilizationState(
-  value
-) {
-
-  state.fertilizationState =
-    value;
-
-
-  setText(
-    "dashboardFertStatus",
-    value
-  );
-
-
-  setText(
-    "sprinklerFertState",
-    value
-  );
-
-
-  setText(
-    "sprinklerAutoState",
-    value
-  );
-
-
-  if (
-    value.includes(
-      "FERTILIZ"
-    )
-  ) {
-
-    updateSequence(
-      "FERTILIZING"
-    );
-
-  }
-
-}
-
-
-function handleMissionDone() {
-
-  state.samplingState =
-    "DONE";
-
-
-  setFertilizationState(
-    "COMPLETE"
-  );
-
-
-  setText(
-    "missionStatus",
-    "Mission complete"
-  );
-
-
-  setText(
-    "overviewState",
-    "Complete"
-  );
-
-
-  updateSequence(
-    "DONE"
-  );
-
-
-  addAlert(
-    "success",
-    "Mission complete",
-    "Rover reported MISSION_DONE."
-  );
-
-
-  toast(
-    "Mission complete"
-  );
-
-}
-
-
-/* =========================================================
-   SEQUENCE
-========================================================= */
-
-function updateSequence(
-  stage
-) {
-
-  const ids = [
-    "stepCrop",
-    "stepSample",
-    "stepHeatmap",
-    "stepFert",
-    "stepDone"
-  ];
-
-
-  const order = {
-    CROP: 0,
-    SAMPLING: 1,
-    HEATMAP: 2,
-    FERTILIZING: 3,
-    DONE: 4
-  };
-
-
-  const active =
-    order[stage] ?? 0;
-
-
-  ids.forEach(
-    (
-      id,
-      index
-    ) => {
-
-      const element =
-        el(id);
-
-
-      if (
-        !element
-      )
-        return;
-
-
-      element.classList.toggle(
-        "active",
-        index === active
-      );
-
-
-      element.classList.toggle(
-        "complete",
-        index < active
-      );
-
-    }
-  );
-
-
-  const label = {
-
-    CROP:
-      "Crop selected",
-
-    SAMPLING:
-      "Autonomous sampling",
-
-    HEATMAP:
-      "Heatmap complete",
-
-    FERTILIZING:
-      "Autonomous fertilization",
-
-    DONE:
-      "Mission complete"
-
-  };
-
-
-  setText(
-    "sequenceStatus",
-    label[stage] ||
-    stage
-  );
-
-}
-
-
-/* =========================================================
-   TELEMETRY PROCESSING
+   PROCESS VALID TELEMETRY
 ========================================================= */
 
 function processTelemetry(
@@ -2464,15 +1608,6 @@ function processTelemetry(
   updateTimestampDisplay();
 
 
-  /*
-     Each unique telemetry packet
-     becomes one sampling point.
-
-     If your rover later sends a dedicated
-     SAMPLE message, this can easily be changed
-     to collect only those dedicated samples.
-  */
-
   collectMissionSample(
     data
   );
@@ -2481,7 +1616,7 @@ function processTelemetry(
 
 
 /* =========================================================
-   DASHBOARD DATA
+   DASHBOARD
 ========================================================= */
 
 function updateDashboard(
@@ -2505,7 +1640,9 @@ function updateDashboard(
 
 
   if (
-    el("batteryBar")
+    el(
+      "batteryBar"
+    )
   ) {
 
     el(
@@ -2521,7 +1658,9 @@ function updateDashboard(
 
 
   if (
-    el("sideBatteryBar")
+    el(
+      "sideBatteryBar"
+    )
   ) {
 
     el(
@@ -2566,12 +1705,6 @@ function updateDashboard(
   setText(
     "overviewState",
     "Live"
-  );
-
-
-  setText(
-    "dashboardSamples",
-    `${missionSamples.length} samples`
   );
 
 }
@@ -2692,19 +1825,22 @@ function updateLiveTelemetry(
 
   setText(
     "telemetryAccX",
-    data.accX.toFixed(3)
+    data.accX
+      .toFixed(3)
   );
 
 
   setText(
     "telemetryAccY",
-    data.accY.toFixed(3)
+    data.accY
+      .toFixed(3)
   );
 
 
   setText(
     "telemetryAccZ",
-    data.accZ.toFixed(3)
+    data.accZ
+      .toFixed(3)
   );
 
 
@@ -2737,7 +1873,7 @@ function updateLiveTelemetry(
 
 
 /* =========================================================
-   NPK GAUGES
+   NPK
 ========================================================= */
 
 function updateNpk(
@@ -2845,7 +1981,7 @@ function updateGauge(
 
 
 /* =========================================================
-   LIVE ROVER MAP
+   MAP INITIALIZATION
 ========================================================= */
 
 function initializeMaps() {
@@ -2857,7 +1993,9 @@ function initializeMaps() {
 
 
   if (
-    el("roverLiveMap") &&
+    el(
+      "roverLiveMap"
+    ) &&
     !roverMap
   ) {
 
@@ -2895,7 +2033,9 @@ function initializeMaps() {
 
 
   if (
-    el("largeRoverMap") &&
+    el(
+      "largeRoverMap"
+    ) &&
     !largeRoverMap
   ) {
 
@@ -2988,6 +2128,10 @@ function createRoverIcon(
 }
 
 
+/* =========================================================
+   LIVE ROVER LOCATION
+========================================================= */
+
 function updateRoverLocation(
   data
 ) {
@@ -3019,11 +2163,14 @@ function updateRoverLocation(
       "telemetryGpsStatus"
     ]
     .forEach(
-      id =>
+      id => {
+
         setText(
           id,
           "No GPS Fix"
-        )
+        );
+
+      }
     );
 
 
@@ -3112,14 +2259,6 @@ function updateRoverLocation(
     }
 
 
-    roverMarker
-      .bindPopup(
-        buildRoverPopup(
-          data
-        )
-      );
-
-
     roverTrackLine
       ?.setLatLngs(
         roverGpsHistory
@@ -3170,14 +2309,6 @@ function updateRoverLocation(
     }
 
 
-    largeRoverMarker
-      .bindPopup(
-        buildRoverPopup(
-          data
-        )
-      );
-
-
     largeRoverTrackLine
       ?.setLatLngs(
         roverGpsHistory
@@ -3212,13 +2343,15 @@ function updateRoverLocation(
 
   setText(
     "mapLatitude",
-    latitude.toFixed(6)
+    latitude
+      .toFixed(6)
   );
 
 
   setText(
     "mapLongitude",
-    longitude.toFixed(6)
+    longitude
+      .toFixed(6)
   );
 
 
@@ -3237,13 +2370,15 @@ function updateRoverLocation(
 
   setText(
     "liveRoverLatitude",
-    latitude.toFixed(6)
+    latitude
+      .toFixed(6)
   );
 
 
   setText(
     "liveRoverLongitude",
-    longitude.toFixed(6)
+    longitude
+      .toFixed(6)
   );
 
 
@@ -3287,11 +2422,14 @@ function updateRoverLocation(
     "telemetryGpsStatus"
   ]
   .forEach(
-    id =>
+    id => {
+
       setText(
         id,
         "GPS Fix"
-      )
+      );
+
+    }
   );
 
 
@@ -3331,27 +2469,9 @@ function updateRoverLocation(
 }
 
 
-function buildRoverPopup(
-  data
-) {
-
-  return `
-    <strong>AgriRover</strong>
-    <br>
-    Packet: ${data.packetNumber}
-    <br>
-    Heading: ${data.yaw.toFixed(1)}°
-    <br>
-    Battery: ${Math.round(data.battery)}%
-    <br>
-    Required N/P/K:
-    ${data.requiredN.toFixed(1)} /
-    ${data.requiredP.toFixed(1)} /
-    ${data.requiredK.toFixed(1)} kg/ha
-  `;
-
-}
-
+/* =========================================================
+   CENTER MAP
+========================================================= */
 
 function centerOnRover(
   map,
@@ -3370,6 +2490,7 @@ function centerOnRover(
       "No valid GPS fix yet"
     );
 
+
     return;
 
   }
@@ -3387,25 +2508,35 @@ function centerOnRover(
 }
 
 
-el("centerRoverMap")
+el(
+  "centerRoverMap"
+)
   ?.addEventListener(
     "click",
-    () =>
+    () => {
+
       centerOnRover(
         roverMap,
         18
-      )
+      );
+
+    }
   );
 
 
-el("centerLargeRoverMap")
+el(
+  "centerLargeRoverMap"
+)
   ?.addEventListener(
     "click",
-    () =>
+    () => {
+
       centerOnRover(
         largeRoverMap,
         19
-      )
+      );
+
+    }
   );
 
 
@@ -3432,22 +2563,21 @@ function clearRoverTrack() {
     "0 points"
   );
 
-
-  toast(
-    "Rover track cleared"
-  );
-
 }
 
 
-el("clearRoverTrack")
+el(
+  "clearRoverTrack"
+)
   ?.addEventListener(
     "click",
     clearRoverTrack
   );
 
 
-el("clearLargeRoverTrack")
+el(
+  "clearLargeRoverTrack"
+)
   ?.addEventListener(
     "click",
     clearRoverTrack
@@ -3455,15 +2585,379 @@ el("clearLargeRoverTrack")
 
 
 /* =========================================================
-   DEFICIENCY CALCULATION
+   CROP BUTTONS
+========================================================= */
 
-   REQUIRED / CROP OPTIMUM × 100
+function cropIcon(
+  crop
+) {
 
-   0–20     Very Low
-   20–40    Low
-   40–60    Moderate
-   60–80    High
-   80–100   Severe
+  if (
+    crop.type.includes(
+      "Cereal"
+    )
+  ) {
+
+    return "🌾";
+
+  }
+
+
+  if (
+    crop.type.includes(
+      "Oilseed"
+    )
+  ) {
+
+    return "🌼";
+
+  }
+
+
+  return "🌱";
+
+}
+
+
+function renderCropButtons() {
+
+  const container =
+    el(
+      "cropButtonGrid"
+    );
+
+
+  if (
+    !container
+  )
+    return;
+
+
+  container.innerHTML =
+    CROP_DATA
+      .map(
+        crop =>
+          `
+          <button
+            class="crop-select-btn"
+            data-crop="${crop.key}"
+          >
+
+            <span class="crop-check">
+              ✓
+            </span>
+
+            <span class="crop-card-icon">
+              ${cropIcon(crop)}
+            </span>
+
+            <div>
+
+              <strong>
+                ${crop.name}
+              </strong>
+
+              <small>
+                ${crop.bangla}
+              </small>
+
+              <span class="crop-type">
+                ${crop.type}
+              </span>
+
+            </div>
+
+          </button>
+          `
+      )
+      .join("");
+
+
+  container
+    .querySelectorAll(
+      ".crop-select-btn"
+    )
+    .forEach(
+      button => {
+
+        button.onclick =
+          () => {
+
+            selectCrop(
+              button.dataset.crop
+            );
+
+          };
+
+      }
+    );
+
+}
+
+
+/* =========================================================
+   SELECT CROP
+========================================================= */
+
+function selectCrop(
+  key
+) {
+
+  const crop =
+    cropByKey(
+      key
+    );
+
+
+  if (
+    !crop
+  )
+    return;
+
+
+  state.selectedCrop =
+    crop;
+
+
+  state.cropSent =
+    false;
+
+
+  document
+    .querySelectorAll(
+      ".crop-select-btn"
+    )
+    .forEach(
+      button => {
+
+        button.classList.toggle(
+          "selected",
+          button.dataset.crop === key
+        );
+
+      }
+    );
+
+
+  setText(
+    "selectedCropName",
+    crop.name
+  );
+
+
+  setText(
+    "selectedCropBangla",
+    crop.bangla
+  );
+
+
+  setText(
+    "selectedCropIcon",
+    cropIcon(
+      crop
+    )
+  );
+
+
+  setText(
+    "cropOptN",
+    crop.n
+  );
+
+
+  setText(
+    "cropOptP",
+    crop.p
+  );
+
+
+  setText(
+    "cropOptK",
+    crop.k
+  );
+
+
+  setText(
+    "cropCondition",
+    crop.condition
+  );
+
+
+  setText(
+    "cropSelectionStatus",
+    "Selected — not sent"
+  );
+
+
+  setText(
+    "cropCommandPreview",
+    `ROVER,CROP,${crop.key}`
+  );
+
+
+  setText(
+    "dashboardCrop",
+    crop.name
+  );
+
+
+  setText(
+    "sideCrop",
+    crop.name
+  );
+
+
+  setText(
+    "dashboardTargetNpk",
+    `N ${crop.n} • P ${crop.p} • K ${crop.k} kg/ha`
+  );
+
+
+  setText(
+    "prescriptionCrop",
+    crop.name
+  );
+
+
+  setText(
+    "prescriptionCropBangla",
+    crop.bangla
+  );
+
+
+  setText(
+    "prescriptionOptN",
+    crop.n
+  );
+
+
+  setText(
+    "prescriptionOptP",
+    crop.p
+  );
+
+
+  setText(
+    "prescriptionOptK",
+    crop.k
+  );
+
+
+  resetMissionSamples();
+
+
+  updateSequence(
+    "CROP"
+  );
+
+
+  renderDeficiencyHeatmaps();
+
+}
+
+
+/* =========================================================
+   SEND CROP ASSIGNMENT
+========================================================= */
+
+async function sendCropAssignment() {
+
+  if (
+    !state.selectedCrop
+  ) {
+
+    toast(
+      "Select a crop first"
+    );
+
+
+    return;
+
+  }
+
+
+  const command =
+    `ROVER,CROP,${state.selectedCrop.key}`;
+
+
+  const sent =
+    await sendBaseCommand(
+      command
+    );
+
+
+  if (
+    sent
+  ) {
+
+    state.cropSent =
+      true;
+
+
+    setText(
+      "cropSelectionStatus",
+      "Assignment sent"
+    );
+
+
+    setText(
+      "missionStatus",
+      "Crop assigned"
+    );
+
+
+    toast(
+      `${state.selectedCrop.name} sent to rover`
+    );
+
+  }
+
+}
+
+
+el(
+  "sendCropAssignment"
+)
+  ?.addEventListener(
+    "click",
+    sendCropAssignment
+  );
+
+
+function handleCropAck(
+  key
+) {
+
+  const crop =
+    cropByKey(
+      key
+    );
+
+
+  if (
+    !crop
+  )
+    return;
+
+
+  state.selectedCrop =
+    crop;
+
+
+  state.cropSent =
+    true;
+
+
+  setText(
+    "cropSelectionStatus",
+    "Rover acknowledged"
+  );
+
+}
+
+
+/* =========================================================
+   DEFICIENCY LOGIC
 ========================================================= */
 
 function deficiencyPercent(
@@ -3500,7 +2994,7 @@ function deficiencyPercent(
 
 
 /* =========================================================
-   SAMPLE COLLECTION
+   COLLECT SAMPLE
 ========================================================= */
 
 function collectMissionSample(
@@ -3636,19 +3130,6 @@ function collectMissionSample(
   );
 
 
-  if (
-    state.samplingState ===
-    "NOT_STARTED"
-  ) {
-
-    setText(
-      "dashboardSampling",
-      "Receiving samples"
-    );
-
-  }
-
-
   renderDeficiencyHeatmaps();
 
 
@@ -3661,7 +3142,7 @@ function collectMissionSample(
 
 
 /* =========================================================
-   GPS → LOCAL FIELD X/Y
+   GPS → LOCAL X/Y
 ========================================================= */
 
 function convertSamplesToLocalXY(
@@ -3729,7 +3210,7 @@ function convertSamplesToLocalXY(
 
 
 /* =========================================================
-   GET DEFICIENCY FIELD
+   GET DEFICIENCY VALUE
 ========================================================= */
 
 function getSampleDeficiency(
@@ -3763,7 +3244,7 @@ function getSampleDeficiency(
 
 
 /* =========================================================
-   IDW INTERPOLATION
+   IDW
 ========================================================= */
 
 function interpolateIDW(
@@ -3801,10 +3282,6 @@ function interpolateIDW(
       dx * dx +
       dy * dy;
 
-
-    /*
-       Exact sample position.
-    */
 
     if (
       distanceSquared <
@@ -3849,8 +3326,11 @@ function interpolateIDW(
 
   if (
     denominator === 0
-  )
+  ) {
+
     return 0;
+
+  }
 
 
   return (
@@ -3862,7 +3342,7 @@ function interpolateIDW(
 
 
 /* =========================================================
-   HEATMAP COLOR SCALE
+   HEATMAP COLOR
 ========================================================= */
 
 function interpolateRgb(
@@ -3996,14 +3476,14 @@ function heatmapColor(
       p -
       80
     ) /
-      20
+    20
   );
 
 }
 
 
 /* =========================================================
-   HEATMAP RENDERER
+   RENDER FIELD HEATMAP
 ========================================================= */
 
 function renderFieldHeatmap(
@@ -4013,11 +3493,15 @@ function renderFieldHeatmap(
 ) {
 
   const canvas =
-    el(canvasId);
+    el(
+      canvasId
+    );
 
 
   const empty =
-    el(emptyId);
+    el(
+      emptyId
+    );
 
 
   if (
@@ -4043,11 +3527,6 @@ function renderFieldHeatmap(
       container.clientHeight
     );
 
-
-  /*
-     Higher device pixel ratio
-     for sharper output.
-  */
 
   const ratio =
     Math.min(
@@ -4166,8 +3645,7 @@ function renderFieldHeatmap(
 
 
   /*
-     Rover samples 1 ft².
-     1 ft = 0.3048 m.
+     1 ft = 0.3048 m
   */
 
   const footprint =
@@ -4193,11 +3671,6 @@ function renderFieldHeatmap(
     footprint /
     2;
 
-
-  /*
-     If only one point exists,
-     create an area around it.
-  */
 
   if (
     maxX -
@@ -4250,27 +3723,6 @@ function renderFieldHeatmap(
     padding *
       2;
 
-
-  /*
-     Soft field background.
-  */
-
-  ctx.fillStyle =
-    "#0a1820";
-
-
-  ctx.fillRect(
-    padding,
-    padding,
-    fieldWidth,
-    fieldHeight
-  );
-
-
-  /*
-     Generate low-resolution
-     interpolation and scale smoothly.
-  */
 
   const heatCanvas =
     document.createElement(
@@ -4447,93 +3899,7 @@ function renderFieldHeatmap(
 
 
   /*
-     Subtle field grid.
-  */
-
-  ctx.save();
-
-
-  ctx.strokeStyle =
-    "rgba(255,255,255,0.10)";
-
-
-  ctx.lineWidth =
-    1;
-
-
-  const gridCount =
-    8;
-
-
-  for (
-    let i = 1;
-    i < gridCount;
-    i++
-  ) {
-
-    const x =
-      padding +
-      (
-        fieldWidth /
-        gridCount
-      ) *
-      i;
-
-
-    const y =
-      padding +
-      (
-        fieldHeight /
-        gridCount
-      ) *
-      i;
-
-
-    ctx.beginPath();
-
-
-    ctx.moveTo(
-      x,
-      padding
-    );
-
-
-    ctx.lineTo(
-      x,
-      padding +
-      fieldHeight
-    );
-
-
-    ctx.stroke();
-
-
-    ctx.beginPath();
-
-
-    ctx.moveTo(
-      padding,
-      y
-    );
-
-
-    ctx.lineTo(
-      padding +
-      fieldWidth,
-      y
-    );
-
-
-    ctx.stroke();
-
-  }
-
-
-  ctx.restore();
-
-
-  /*
-     Field boundary.
+     Field boundary
   */
 
   ctx.strokeStyle =
@@ -4553,7 +3919,7 @@ function renderFieldHeatmap(
 
 
   /*
-     Numbered black sampling points.
+     Sample points
   */
 
   samples.forEach(
@@ -4592,41 +3958,13 @@ function renderFieldHeatmap(
         fieldHeight;
 
 
-      /*
-         Halo.
-      */
-
       ctx.beginPath();
 
 
       ctx.arc(
         cx,
         cy,
-        15,
-        0,
-        Math.PI *
-          2
-      );
-
-
-      ctx.fillStyle =
-        "rgba(255,255,255,0.28)";
-
-
-      ctx.fill();
-
-
-      /*
-         Black sample marker.
-      */
-
-      ctx.beginPath();
-
-
-      ctx.arc(
-        cx,
-        cy,
-        11,
+        12,
         0,
         Math.PI *
           2
@@ -4645,7 +3983,7 @@ function renderFieldHeatmap(
 
 
       ctx.lineWidth =
-        1.3;
+        1.2;
 
 
       ctx.stroke();
@@ -4683,7 +4021,7 @@ function renderFieldHeatmap(
 
 
 /* =========================================================
-   HEATMAP RENDER BOTH
+   RENDER BOTH HEATMAPS
 ========================================================= */
 
 function renderDeficiencyHeatmaps() {
@@ -4751,7 +4089,7 @@ function renderDeficiencyHeatmaps() {
 
 
 /* =========================================================
-   HEATMAP SELECTOR
+   HEATMAP NUTRIENT SELECTOR
 ========================================================= */
 
 function setDeficiencyNutrient(
@@ -4798,25 +4136,31 @@ function setDeficiencyNutrient(
 el(
   "dashboardDeficiencyType"
 )
-?.addEventListener(
-  "change",
-  event =>
-    setDeficiencyNutrient(
-      event.target.value
-    )
-);
+  ?.addEventListener(
+    "change",
+    event => {
+
+      setDeficiencyNutrient(
+        event.target.value
+      );
+
+    }
+  );
 
 
 el(
   "largeDeficiencyType"
 )
-?.addEventListener(
-  "change",
-  event =>
-    setDeficiencyNutrient(
-      event.target.value
-    )
-);
+  ?.addEventListener(
+    "change",
+    event => {
+
+      setDeficiencyNutrient(
+        event.target.value
+      );
+
+    }
+  );
 
 
 /* =========================================================
@@ -4856,10 +4200,10 @@ function updateDeficiencySummary() {
     key =>
       missionSamples.reduce(
         (
-          sum,
+          total,
           sample
         ) =>
-          sum +
+          total +
           sample[key],
         0
       ) /
@@ -4893,7 +4237,158 @@ function updateDeficiencySummary() {
 
 
 /* =========================================================
-   RESET SAMPLES
+   SAMPLING EVENTS
+========================================================= */
+
+function handleSamplingStarted() {
+
+  state.samplingState =
+    "SAMPLING";
+
+
+  heatmapFinalized =
+    false;
+
+
+  setText(
+    "missionStatus",
+    "Sampling"
+  );
+
+
+  setText(
+    "dashboardSampling",
+    "Sampling"
+  );
+
+
+  setText(
+    "sideSamplingStatus",
+    "Sampling"
+  );
+
+
+  setText(
+    "telemetrySamplingState",
+    "SAMPLING"
+  );
+
+
+  setText(
+    "sprinklerSamplingState",
+    "Sampling in progress"
+  );
+
+
+  setText(
+    "heatmapGenerationState",
+    "Live sampling"
+  );
+
+
+  setText(
+    "heatmapStatusText",
+    "Collecting GPS-referenced sampling points..."
+  );
+
+
+  updateSequence(
+    "SAMPLING"
+  );
+
+}
+
+
+async function handleSamplingDone() {
+
+  state.samplingState =
+    "DONE";
+
+
+  heatmapFinalized =
+    true;
+
+
+  setText(
+    "missionStatus",
+    "Sampling complete"
+  );
+
+
+  setText(
+    "dashboardSampling",
+    "Complete"
+  );
+
+
+  setText(
+    "sideSamplingStatus",
+    "Complete"
+  );
+
+
+  setText(
+    "telemetrySamplingState",
+    "DONE"
+  );
+
+
+  setText(
+    "sprinklerSamplingState",
+    "Complete"
+  );
+
+
+  setText(
+    "sprinklerHeatmapState",
+    "Generated"
+  );
+
+
+  setText(
+    "heatmapGenerationState",
+    "Complete"
+  );
+
+
+  setText(
+    "fullHeatmapStatus",
+    `${missionSamples.length} samples • Complete`
+  );
+
+
+  setText(
+    "heatmapStatusText",
+    `Sampling complete — ${missionSamples.length} points interpolated.`
+  );
+
+
+  renderDeficiencyHeatmaps();
+
+
+  updateDeficiencySummary();
+
+
+  updatePrescription();
+
+
+  updateSequence(
+    "HEATMAP"
+  );
+
+
+  toast(
+    "Sampling complete — heatmap generated"
+  );
+
+
+  await startAutonomousFertilization();
+
+}
+
+
+/* =========================================================
+   RESET MISSION SAMPLES
 ========================================================= */
 
 function resetMissionSamples() {
@@ -4958,25 +4453,28 @@ function resetMissionSamples() {
 
 
 /* =========================================================
-   FERTILIZER PRESCRIPTION
+   PRESCRIPTION
 ========================================================= */
 
 function calculatePrescription() {
 
   if (
     !missionSamples.length
-  )
+  ) {
+
     return null;
+
+  }
 
 
   const average =
     key =>
       missionSamples.reduce(
         (
-          sum,
+          total,
           sample
         ) =>
-          sum +
+          total +
           sample[key],
         0
       ) /
@@ -5080,32 +4578,6 @@ function updatePrescription() {
     !prescription
   ) {
 
-    [
-      "avgReqN",
-      "avgReqP",
-      "avgReqK",
-      "maxReqN",
-      "maxReqP",
-      "maxReqK",
-      "totalReqN",
-      "totalReqP",
-      "totalReqK"
-    ]
-    .forEach(
-      id =>
-        setText(
-          id,
-          "--"
-        )
-    );
-
-
-    setText(
-      "prescriptionStatus",
-      "Waiting for samples"
-    );
-
-
     return;
 
   }
@@ -5178,50 +4650,883 @@ function updatePrescription() {
       ).toFixed(2)
     );
 
-
-    setText(
-      "prescriptionAreaLabel",
-      `${state.fieldAreaHa} ha`
-    );
-
   }
 
-  else {
-
-    setText(
-      "totalReqN",
-      "--"
-    );
+}
 
 
-    setText(
-      "totalReqP",
-      "--"
-    );
+/* =========================================================
+   START AUTONOMOUS FERTILIZATION
+========================================================= */
+
+async function startAutonomousFertilization() {
+
+  const prescription =
+    calculatePrescription();
 
 
-    setText(
-      "totalReqK",
-      "--"
-    );
+  if (
+    !prescription
+  ) {
 
-
-    setText(
-      "prescriptionAreaLabel",
-      "Area not set"
-    );
+    return;
 
   }
 
 
-  setText(
-    "prescriptionStatus",
-    heatmapFinalized
-      ? "Sampling complete"
-      : "Updating live"
+  const command =
+    `FERT,PRESCRIPTION,` +
+    `${prescription.avgN.toFixed(2)},` +
+    `${prescription.avgP.toFixed(2)},` +
+    `${prescription.avgK.toFixed(2)}`;
+
+
+  const sent =
+    await sendBaseCommand(
+      command
+    );
+
+
+  if (
+    !sent
+  ) {
+
+    return;
+
+  }
+
+
+  await sendBaseCommand(
+    "FERT,AUTO_START"
+  );
+
+
+  setFertilizationState(
+    "AUTO START SENT"
+  );
+
+
+  updateSequence(
+    "FERTILIZING"
   );
 
 }
+
+
+/* =========================================================
+   FERTILIZATION STATE
+========================================================= */
+
+function setFertilizationState(
+  value
+) {
+
+  state.fertilizationState =
+    value;
+
+
+  setText(
+    "dashboardFertStatus",
+    value
+  );
+
+
+  setText(
+    "sprinklerFertState",
+    value
+  );
+
+
+  setText(
+    "sprinklerAutoState",
+    value
+  );
+
+}
+
+
+/* =========================================================
+   MISSION DONE
+========================================================= */
+
+function handleMissionDone() {
+
+  setFertilizationState(
+    "COMPLETE"
+  );
+
+
+  setText(
+    "missionStatus",
+    "Mission complete"
+  );
+
+
+  updateSequence(
+    "DONE"
+  );
+
+
+  toast(
+    "Mission complete"
+  );
+
+}
+
+
+/* =========================================================
+   SEQUENCE
+========================================================= */
+
+function updateSequence(
+  stage
+) {
+
+  const ids = [
+
+    "stepCrop",
+
+    "stepSample",
+
+    "stepHeatmap",
+
+    "stepFert",
+
+    "stepDone"
+
+  ];
+
+
+  const order = {
+
+    CROP:
+      0,
+
+    SAMPLING:
+      1,
+
+    HEATMAP:
+      2,
+
+    FERTILIZING:
+      3,
+
+    DONE:
+      4
+
+  };
+
+
+  const active =
+    order[stage] ??
+    0;
+
+
+  ids.forEach(
+    (
+      id,
+      index
+    ) => {
+
+      const element =
+        el(id);
+
+
+      if (
+        !element
+      )
+        return;
+
+
+      element.classList.toggle(
+        "active",
+        index === active
+      );
+
+
+      element.classList.toggle(
+        "complete",
+        index < active
+      );
+
+    }
+  );
+
+}
+
+
+/* =========================================================
+   SEND BASE COMMAND
+========================================================= */
+
+async function sendBaseCommand(
+  command
+) {
+
+  if (
+    !baseStationConnected ||
+    !serialPort ||
+    !serialPort.writable
+  ) {
+
+    toast(
+      "Connect Base Station first"
+    );
+
+
+    return false;
+
+  }
+
+
+  let writer =
+    null;
+
+
+  try {
+
+    writer =
+      serialPort
+        .writable
+        .getWriter();
+
+
+    await writer.write(
+      new TextEncoder()
+        .encode(
+          command +
+          "\n"
+        )
+    );
+
+
+    return true;
+
+  }
+
+  catch (error) {
+
+    console.error(
+      error
+    );
+
+
+    return false;
+
+  }
+
+  finally {
+
+    writer
+      ?.releaseLock();
+
+  }
+
+}
+
+
+/* =========================================================
+   MISSION CONTROL
+========================================================= */
+
+el(
+  "startMission"
+)
+  ?.addEventListener(
+    "click",
+    async () => {
+
+      if (
+        !state.selectedCrop
+      ) {
+
+        toast(
+          "Select crop first"
+        );
+
+
+        navigate(
+          "crop"
+        );
+
+
+        return;
+
+      }
+
+
+      if (
+        !state.cropSent
+      ) {
+
+        const cropSent =
+          await sendBaseCommand(
+            `ROVER,CROP,${state.selectedCrop.key}`
+          );
+
+
+        if (
+          !cropSent
+        )
+          return;
+
+
+        state.cropSent =
+          true;
+
+      }
+
+
+      await sendBaseCommand(
+        "ROVER,START"
+      );
+
+
+      setText(
+        "missionStatus",
+        "Starting"
+      );
+
+    }
+  );
+
+
+async function pauseRover() {
+
+  await sendBaseCommand(
+    "ROVER,PAUSE"
+  );
+
+
+  state.paused =
+    true;
+
+
+  setText(
+    "missionStatus",
+    "Paused"
+  );
+
+}
+
+
+async function resumeRover() {
+
+  await sendBaseCommand(
+    "ROVER,RESUME"
+  );
+
+
+  state.paused =
+    false;
+
+
+  setText(
+    "missionStatus",
+    "Autonomous"
+  );
+
+}
+
+
+el(
+  "pauseMission"
+)
+  ?.addEventListener(
+    "click",
+    async () => {
+
+      if (
+        state.paused
+      ) {
+
+        await resumeRover();
+
+
+        setText(
+          "pauseMission",
+          "Pause Rover"
+        );
+
+      }
+
+      else {
+
+        await pauseRover();
+
+
+        setText(
+          "pauseMission",
+          "Resume Rover"
+        );
+
+      }
+
+    }
+  );
+
+
+/* =========================================================
+   EMERGENCY
+========================================================= */
+
+async function emergencyStop() {
+
+  await sendBaseCommand(
+    "ROVER,ESTOP"
+  );
+
+
+  await sendBaseCommand(
+    "FERT,ALL_OFF"
+  );
+
+
+  state.emergency =
+    true;
+
+
+  setText(
+    "missionStatus",
+    "EMERGENCY STOP"
+  );
+
+
+  setFertilizationState(
+    "EMERGENCY OFF"
+  );
+
+}
+
+
+el(
+  "emergencyBtn"
+)
+  ?.addEventListener(
+    "click",
+    emergencyStop
+  );
+
+
+el(
+  "manualEstop"
+)
+  ?.addEventListener(
+    "click",
+    emergencyStop
+  );
+
+
+el(
+  "manualPause"
+)
+  ?.addEventListener(
+    "click",
+    pauseRover
+  );
+
+
+el(
+  "manualResume"
+)
+  ?.addEventListener(
+    "click",
+    resumeRover
+  );
+
+
+el(
+  "manualStop"
+)
+  ?.addEventListener(
+    "click",
+    () => {
+
+      sendBaseCommand(
+        "ROVER,STOP"
+      );
+
+    }
+  );
+
+
+/* =========================================================
+   MANUAL ROVER MOVEMENT
+========================================================= */
+
+const movementCommands = {
+
+  Forward:
+    "FWD",
+
+  Backward:
+    "BACK",
+
+  Left:
+    "LEFT",
+
+  Right:
+    "RIGHT",
+
+  Stop:
+    "STOP"
+
+};
+
+
+document
+  .querySelectorAll(
+    ".dpad button"
+  )
+  .forEach(
+    button => {
+
+      button.onclick =
+        async () => {
+
+          const type =
+            movementCommands[
+              button.dataset.command
+            ];
+
+
+          const speed =
+            el(
+              "manualSpeed"
+            )?.value ||
+            "0.4";
+
+
+          const command =
+            type ===
+            "STOP"
+              ? "ROVER,STOP"
+              : `ROVER,${type},${speed}`;
+
+
+          await sendBaseCommand(
+            command
+          );
+
+
+          setText(
+            "manualCommand",
+            `Sent: ${command}`
+          );
+
+        };
+
+    }
+  );
+
+
+el(
+  "manualSpeed"
+)
+  ?.addEventListener(
+    "input",
+    event => {
+
+      setText(
+        "manualSpeedValue",
+        `${event.target.value} m/s`
+      );
+
+    }
+  );
+
+
+/* =========================================================
+   FERTILIZER OVERRIDE
+========================================================= */
+
+document
+  .querySelectorAll(
+    "[data-pump]"
+  )
+  .forEach(
+    button => {
+
+      button.onclick =
+        () => {
+
+          sendBaseCommand(
+            `FERT,PUMP,${button.dataset.pump}`
+          );
+
+        };
+
+    }
+  );
+
+
+document
+  .querySelectorAll(
+    "[data-valve][data-action]"
+  )
+  .forEach(
+    button => {
+
+      button.onclick =
+        () => {
+
+          sendBaseCommand(
+            `FERT,${button.dataset.valve},${button.dataset.action}`
+          );
+
+        };
+
+    }
+  );
+
+
+el(
+  "allFertilizerOff"
+)
+  ?.addEventListener(
+    "click",
+    () => {
+
+      sendBaseCommand(
+        "FERT,ALL_OFF"
+      );
+
+    }
+  );
+
+
+/* =========================================================
+   ROVER ONLINE STATUS
+========================================================= */
+
+function setRoverOnline(
+  online
+) {
+
+  const dot =
+    el(
+      "roverStatusDot"
+    );
+
+
+  dot
+    ?.classList
+    .toggle(
+      "connected-dot",
+      online
+    );
+
+
+  dot
+    ?.classList
+    .toggle(
+      "disconnected-dot",
+      !online
+    );
+
+
+  setText(
+    "roverStatusText",
+    online
+      ? "Connected"
+      : "No Signal"
+  );
+
+
+  setText(
+    "sideRoverStatus",
+    online
+      ? "Connected"
+      : "No Signal"
+  );
+
+}
+
+
+/* =========================================================
+   DATA AGE + LOST SIGNAL
+========================================================= */
+
+setInterval(
+  () => {
+
+    if (
+      !lastRoverPacketAt
+    ) {
+
+      return;
+
+    }
+
+
+    const age =
+      (
+        Date.now() -
+        lastRoverPacketAt
+          .getTime()
+      ) /
+      1000;
+
+
+    setText(
+      "telemetryDataAge",
+      `${age.toFixed(1)} sec`
+    );
+
+
+    setText(
+      "sensorDataAge",
+      age < 60
+        ? `${Math.floor(age)} sec ago`
+        : `${Math.floor(age / 60)} min ago`
+    );
+
+
+    if (
+      age >
+      8
+    ) {
+
+      setRoverOnline(
+        false
+      );
+
+
+      setText(
+        "telemetryStatusText",
+        "Telemetry Lost"
+      );
+
+    }
+
+  },
+  500
+);
+
+
+/* =========================================================
+   TIMESTAMP
+========================================================= */
+
+function updateTimestampDisplay() {
+
+  setText(
+    "sensorTimestamp",
+    lastSensorUpdate
+      ? formatTimestamp(
+          lastSensorUpdate
+        )
+      : "No data received"
+  );
+
+}
+
+
+/* =========================================================
+   RAW CONSOLE
+========================================================= */
+
+function addTelemetryConsoleLine(
+  packet
+) {
+
+  const box =
+    el(
+      "telemetryConsole"
+    );
+
+
+  if (
+    !box
+  )
+    return;
+
+
+  box
+    .querySelector(
+      ".console-empty"
+    )
+    ?.remove();
+
+
+  const row =
+    document.createElement(
+      "div"
+    );
+
+
+  row.className =
+    "telemetry-console-line";
+
+
+  const time =
+    document.createElement(
+      "span"
+    );
+
+
+  time.className =
+    "telemetry-console-time";
+
+
+  time.textContent =
+    new Date()
+      .toLocaleTimeString();
+
+
+  row.appendChild(
+    time
+  );
+
+
+  row.appendChild(
+    document.createTextNode(
+      packet
+    )
+  );
+
+
+  box.appendChild(
+    row
+  );
+
+
+  while (
+    box.children.length >
+    200
+  ) {
+
+    box.removeChild(
+      box.firstChild
+    );
+
+  }
+
+
+  box.scrollTop =
+    box.scrollHeight;
+
+}
+
+
+el(
+  "clearTelemetryConsole"
+)
+  ?.addEventListener(
+    "click",
+    () => {
+
+      el(
+        "telemetryConsole"
+      ).innerHTML =
+        `
+        <div class="console-empty">
+          Waiting for rover packets...
+        </div>
+        `;
+
+    }
+  );
 
 
 /* =========================================================
@@ -5232,21 +5537,21 @@ function loadHistory() {
 
   try {
 
-    const stored =
+    const saved =
       localStorage.getItem(
         HISTORY_KEY
       );
 
 
-    return stored
+    return saved
       ? JSON.parse(
-          stored
+          saved
         )
       : [];
 
   }
 
-  catch (error) {
+  catch {
 
     return [];
 
@@ -5267,7 +5572,8 @@ function saveTelemetrySample(
 
     crop:
       state.selectedCrop
-        ?.name || "",
+        ?.name ||
+      "",
 
     packetNumber:
       data.packetNumber,
@@ -5400,12 +5706,6 @@ function renderHistory(
       `;
 
 
-    setText(
-      "historySummary",
-      "No stored samples"
-    );
-
-
     return;
 
   }
@@ -5433,15 +5733,11 @@ function renderHistory(
             </td>
 
             <td>
-              ${Number(
-                sample.latitude
-              ).toFixed(6)}
+              ${sample.latitude}
             </td>
 
             <td>
-              ${Number(
-                sample.longitude
-              ).toFixed(6)}
+              ${sample.longitude}
             </td>
 
             <td>
@@ -5477,940 +5773,7 @@ function renderHistory(
       )
       .join("");
 
-
-  setText(
-    "historySummary",
-    `${rows.length} stored measurements`
-  );
-
 }
-
-
-el("filterHistory")
-  ?.addEventListener(
-    "click",
-    () => {
-
-      const from =
-        el(
-          "historyFrom"
-        )?.value;
-
-
-      const to =
-        el(
-          "historyTo"
-        )?.value;
-
-
-      const filtered =
-        sensorRows.filter(
-          sample => {
-
-            const date =
-              new Date(
-                sample.timestamp
-              );
-
-
-            return (
-              (
-                !from ||
-                date >=
-                  new Date(
-                    `${from}T00:00:00`
-                  )
-              ) &&
-              (
-                !to ||
-                date <=
-                  new Date(
-                    `${to}T23:59:59`
-                  )
-              )
-            );
-
-          }
-        );
-
-
-      renderHistory(
-        filtered
-      );
-
-    }
-  );
-
-
-el("resetHistoryFilter")
-  ?.addEventListener(
-    "click",
-    () => {
-
-      if (
-        el(
-          "historyFrom"
-        )
-      ) {
-
-        el(
-          "historyFrom"
-        ).value =
-          "";
-
-      }
-
-
-      if (
-        el(
-          "historyTo"
-        )
-      ) {
-
-        el(
-          "historyTo"
-        ).value =
-          "";
-
-      }
-
-
-      renderHistory();
-
-    }
-  );
-
-
-el("exportHistoryCsv")
-  ?.addEventListener(
-    "click",
-    () => {
-
-      const header = [
-
-        "Timestamp",
-        "Crop",
-        "Packet",
-        "Latitude",
-        "Longitude",
-        "Temperature",
-        "Humidity",
-        "Measured N",
-        "Measured P",
-        "Measured K",
-        "Required N",
-        "Required P",
-        "Required K",
-        "Roll",
-        "Pitch",
-        "Yaw",
-        "AccX",
-        "AccY",
-        "AccZ",
-        "Battery"
-
-      ];
-
-
-      const rows =
-        sensorRows.map(
-          sample => [
-
-            sample.timestamp,
-            sample.crop,
-            sample.packetNumber,
-            sample.latitude,
-            sample.longitude,
-            sample.temperature,
-            sample.humidity,
-            sample.nitrogen,
-            sample.phosphorus,
-            sample.potassium,
-            sample.requiredN,
-            sample.requiredP,
-            sample.requiredK,
-            sample.roll,
-            sample.pitch,
-            sample.yaw,
-            sample.accX,
-            sample.accY,
-            sample.accZ,
-            sample.battery
-
-          ]
-        );
-
-
-      const csv =
-        [
-          header,
-          ...rows
-        ]
-        .map(
-          row =>
-            row.join(",")
-        )
-        .join("\n");
-
-
-      const blob =
-        new Blob(
-          [csv],
-          {
-            type:
-              "text/csv"
-          }
-        );
-
-
-      const link =
-        document.createElement(
-          "a"
-        );
-
-
-      link.href =
-        URL.createObjectURL(
-          blob
-        );
-
-
-      link.download =
-        "agrirover-telemetry.csv";
-
-
-      link.click();
-
-
-      URL.revokeObjectURL(
-        link.href
-      );
-
-    }
-  );
-
-
-/* =========================================================
-   MISSION CONTROLS
-========================================================= */
-
-el("startMission")
-  ?.addEventListener(
-    "click",
-    async () => {
-
-      if (
-        !state.selectedCrop
-      ) {
-
-        toast(
-          "Select a crop first"
-        );
-
-
-        navigate(
-          "crop"
-        );
-
-
-        return;
-
-      }
-
-
-      if (
-        !state.cropSent
-      ) {
-
-        const cropSent =
-          await sendBaseCommand(
-            `ROVER,CROP,${state.selectedCrop.key}`
-          );
-
-
-        if (
-          !cropSent
-        )
-          return;
-
-
-        state.cropSent =
-          true;
-
-      }
-
-
-      const sent =
-        await sendBaseCommand(
-          "ROVER,START"
-        );
-
-
-      if (
-        sent
-      ) {
-
-        setText(
-          "missionStatus",
-          "Starting autonomous mission"
-        );
-
-      }
-
-    }
-  );
-
-
-async function pauseRover() {
-
-  if (
-    await sendBaseCommand(
-      "ROVER,PAUSE"
-    )
-  ) {
-
-    state.paused =
-      true;
-
-
-    setText(
-      "missionStatus",
-      "Paused"
-    );
-
-  }
-
-}
-
-
-async function resumeRover() {
-
-  if (
-    await sendBaseCommand(
-      "ROVER,RESUME"
-    )
-  ) {
-
-    state.paused =
-      false;
-
-
-    setText(
-      "missionStatus",
-      "Autonomous"
-    );
-
-  }
-
-}
-
-
-el("pauseMission")
-  ?.addEventListener(
-    "click",
-    async () => {
-
-      if (
-        state.paused
-      ) {
-
-        await resumeRover();
-
-
-        setText(
-          "pauseMission",
-          "Pause Rover"
-        );
-
-      }
-
-      else {
-
-        await pauseRover();
-
-
-        setText(
-          "pauseMission",
-          "Resume Rover"
-        );
-
-      }
-
-    }
-  );
-
-
-el("manualPause")
-  ?.addEventListener(
-    "click",
-    pauseRover
-  );
-
-
-el("manualResume")
-  ?.addEventListener(
-    "click",
-    resumeRover
-  );
-
-
-/* =========================================================
-   EMERGENCY STOP
-========================================================= */
-
-async function emergencyStop() {
-
-  await sendBaseCommand(
-    "ROVER,ESTOP"
-  );
-
-
-  await sendBaseCommand(
-    "FERT,ALL_OFF"
-  );
-
-
-  state.emergency =
-    true;
-
-
-  setText(
-    "missionStatus",
-    "EMERGENCY STOP"
-  );
-
-
-  setFertilizationState(
-    "EMERGENCY OFF"
-  );
-
-
-  addAlert(
-    "error",
-    "Emergency stop",
-    "Rover stop and fertilizer shutdown sent."
-  );
-
-
-  toast(
-    "Emergency stop sent"
-  );
-
-}
-
-
-el("emergencyBtn")
-  ?.addEventListener(
-    "click",
-    emergencyStop
-  );
-
-
-el("manualEstop")
-  ?.addEventListener(
-    "click",
-    emergencyStop
-  );
-
-
-el("manualStop")
-  ?.addEventListener(
-    "click",
-    () =>
-      sendBaseCommand(
-        "ROVER,STOP"
-      )
-  );
-
-
-/* =========================================================
-   EMERGENCY MOVEMENT
-========================================================= */
-
-const movementCommands = {
-
-  Forward:
-    "FWD",
-
-  Backward:
-    "BACK",
-
-  Left:
-    "LEFT",
-
-  Right:
-    "RIGHT",
-
-  Stop:
-    "STOP"
-
-};
-
-
-document
-  .querySelectorAll(
-    ".dpad button"
-  )
-  .forEach(
-    button => {
-
-      button.onclick =
-        async () => {
-
-          const type =
-            movementCommands[
-              button.dataset.command
-            ];
-
-
-          const speed =
-            el(
-              "manualSpeed"
-            )?.value ||
-            "0.4";
-
-
-          const command =
-            type ===
-            "STOP"
-              ? "ROVER,STOP"
-              : `ROVER,${type},${speed}`;
-
-
-          const sent =
-            await sendBaseCommand(
-              command
-            );
-
-
-          if (
-            sent
-          ) {
-
-            setText(
-              "manualCommand",
-              `Emergency recovery command: ${command}`
-            );
-
-          }
-
-        };
-
-    }
-  );
-
-
-el("manualSpeed")
-  ?.addEventListener(
-    "input",
-    event =>
-      setText(
-        "manualSpeedValue",
-        `${event.target.value} m/s`
-      )
-  );
-
-
-/* =========================================================
-   FERTILIZER MANUAL OVERRIDE
-========================================================= */
-
-document
-  .querySelectorAll(
-    "[data-pump]"
-  )
-  .forEach(
-    button => {
-
-      button.onclick =
-        () =>
-          sendBaseCommand(
-            `FERT,PUMP,${button.dataset.pump}`
-          );
-
-    }
-  );
-
-
-document
-  .querySelectorAll(
-    "[data-valve][data-action]"
-  )
-  .forEach(
-    button => {
-
-      button.onclick =
-        () =>
-          sendBaseCommand(
-            `FERT,${button.dataset.valve},${button.dataset.action}`
-          );
-
-    }
-  );
-
-
-el("allFertilizerOff")
-  ?.addEventListener(
-    "click",
-    async () => {
-
-      await sendBaseCommand(
-        "FERT,ALL_OFF"
-      );
-
-
-      setFertilizationState(
-        "MANUAL OFF"
-      );
-
-    }
-  );
-
-
-function processBaseAck(
-  parts
-) {
-
-  if (
-    parts[0] ===
-    "FERT"
-  ) {
-
-    addAlert(
-      "success",
-      "Fertilizer controller ACK",
-      parts
-        .slice(1)
-        .join(",")
-    );
-
-  }
-
-}
-
-
-/* =========================================================
-   FIELD SETUP
-========================================================= */
-
-function loadFieldUi() {
-
-  if (
-    el(
-      "fieldName"
-    )
-  ) {
-
-    el(
-      "fieldName"
-    ).value =
-      state.fieldName;
-
-  }
-
-
-  if (
-    el(
-      "fieldAreaHa"
-    )
-  ) {
-
-    el(
-      "fieldAreaHa"
-    ).value =
-      state.fieldAreaHa ||
-      "";
-
-  }
-
-}
-
-
-el("saveFieldSetup")
-  ?.addEventListener(
-    "click",
-    () => {
-
-      state.fieldName =
-        el(
-          "fieldName"
-        )?.value
-          .trim() ||
-        "Field";
-
-
-      state.fieldAreaHa =
-        Math.max(
-          0,
-          Number(
-            el(
-              "fieldAreaHa"
-            )?.value ||
-            0
-          )
-        );
-
-
-      localStorage.setItem(
-        "agriroverFieldName",
-        state.fieldName
-      );
-
-
-      localStorage.setItem(
-        "agriroverFieldAreaHa",
-        String(
-          state.fieldAreaHa
-        )
-      );
-
-
-      updatePrescription();
-
-
-      toast(
-        "Field setup saved"
-      );
-
-    }
-  );
-
-
-/* =========================================================
-   ROVER ONLINE STATE / AGE
-========================================================= */
-
-function setRoverOnline(
-  online
-) {
-
-  const dot =
-    el(
-      "roverStatusDot"
-    );
-
-
-  dot
-    ?.classList
-    .toggle(
-      "connected-dot",
-      online
-    );
-
-
-  dot
-    ?.classList
-    .toggle(
-      "disconnected-dot",
-      !online
-    );
-
-
-  setText(
-    "roverStatusText",
-    online
-      ? "Connected"
-      : "No Signal"
-  );
-
-
-  setText(
-    "sideRoverStatus",
-    online
-      ? "Connected"
-      : "No Signal"
-  );
-
-
-  if (
-    el(
-      "sideRoverStatus"
-    )
-  ) {
-
-    el(
-      "sideRoverStatus"
-    ).className =
-      online
-        ? "ok"
-        : "";
-
-  }
-
-}
-
-
-setInterval(
-  () => {
-
-    if (
-      !lastRoverPacketAt
-    )
-      return;
-
-
-    const age =
-      (
-        Date.now() -
-        lastRoverPacketAt
-          .getTime()
-      ) /
-      1000;
-
-
-    setText(
-      "telemetryDataAge",
-      `${age.toFixed(1)} sec`
-    );
-
-
-    setText(
-      "sensorDataAge",
-      age < 60
-        ? `${Math.floor(age)} sec ago`
-        : `${Math.floor(age / 60)} min ago`
-    );
-
-
-    if (
-      age >
-      8
-    ) {
-
-      setRoverOnline(
-        false
-      );
-
-
-      setText(
-        "telemetryStatusText",
-        "Telemetry Lost"
-      );
-
-    }
-
-  },
-  500
-);
-
-
-function updateTimestampDisplay() {
-
-  setText(
-    "sensorTimestamp",
-    lastSensorUpdate
-      ? formatTimestamp(
-          lastSensorUpdate
-        )
-      : "No data received"
-  );
-
-}
-
-
-/* =========================================================
-   RAW TELEMETRY
-========================================================= */
-
-function addTelemetryConsoleLine(
-  packet
-) {
-
-  const box =
-    el(
-      "telemetryConsole"
-    );
-
-
-  if (
-    !box
-  )
-    return;
-
-
-  box
-    .querySelector(
-      ".console-empty"
-    )
-    ?.remove();
-
-
-  const row =
-    document.createElement(
-      "div"
-    );
-
-
-  row.className =
-    "telemetry-console-line";
-
-
-  const time =
-    document.createElement(
-      "span"
-    );
-
-
-  time.className =
-    "telemetry-console-time";
-
-
-  time.textContent =
-    new Date()
-      .toLocaleTimeString();
-
-
-  row.appendChild(
-    time
-  );
-
-
-  row.appendChild(
-    document.createTextNode(
-      packet
-    )
-  );
-
-
-  box.appendChild(
-    row
-  );
-
-
-  while (
-    box.children.length >
-    200
-  ) {
-
-    box.removeChild(
-      box.firstChild
-    );
-
-  }
-
-
-  box.scrollTop =
-    box.scrollHeight;
-
-}
-
-
-el("clearTelemetryConsole")
-  ?.addEventListener(
-    "click",
-    () => {
-
-      el(
-        "telemetryConsole"
-      ).innerHTML =
-        `
-        <div class="console-empty">
-          Waiting for rover packets...
-        </div>
-        `;
-
-    }
-  );
 
 
 /* =========================================================
@@ -6436,20 +5799,6 @@ function addAlert(
         .toLocaleTimeString()
 
   });
-
-
-  if (
-    systemAlerts.length >
-    100
-  ) {
-
-    systemAlerts =
-      systemAlerts.slice(
-        0,
-        100
-      );
-
-  }
 
 
   renderAlerts();
@@ -6479,7 +5828,9 @@ function renderAlerts() {
       `
       <article class="alert">
 
-        <span>ℹ</span>
+        <span>
+          ℹ
+        </span>
 
         <div>
 
@@ -6493,7 +5844,9 @@ function renderAlerts() {
 
         </div>
 
-        <time>--</time>
+        <time>
+          --
+        </time>
 
       </article>
       `;
@@ -6504,23 +5857,6 @@ function renderAlerts() {
   }
 
 
-  const icons = {
-
-    success:
-      "✓",
-
-    warning:
-      "⚠",
-
-    error:
-      "✕",
-
-    info:
-      "ℹ"
-
-  };
-
-
   container.innerHTML =
     systemAlerts
       .map(
@@ -6529,7 +5865,7 @@ function renderAlerts() {
           <article class="alert ${alert.type}">
 
             <span>
-              ${icons[alert.type] || "ℹ"}
+              ℹ
             </span>
 
             <div>
@@ -6556,103 +5892,42 @@ function renderAlerts() {
 }
 
 
-el("clearAlerts")
-  ?.addEventListener(
-    "click",
-    () => {
-
-      systemAlerts =
-        [];
-
-
-      renderAlerts();
-
-    }
-  );
-
-
 /* =========================================================
-   WINDOW RESIZE
-========================================================= */
-
-let heatmapResizeTimer =
-  null;
-
-
-window.addEventListener(
-  "resize",
-  () => {
-
-    clearTimeout(
-      heatmapResizeTimer
-    );
-
-
-    heatmapResizeTimer =
-      setTimeout(
-        () => {
-
-          renderDeficiencyHeatmaps();
-
-        },
-        150
-      );
-
-  }
-);
-
-
-/* =========================================================
-   INITIALIZE
+   INITIALIZATION
 ========================================================= */
 
 renderCropButtons();
 
+
 renderHistory();
+
 
 renderAlerts();
 
-loadFieldUi();
 
 updateBaseStatus(
   false
 );
 
+
 setRoverOnline(
   false
 );
 
+
 initializeMaps();
+
 
 updateSequence(
   "CROP"
 );
 
-updatePrescription();
 
 renderDeficiencyHeatmaps();
 
 
-setText(
-  "dashboardSampling",
-  "Not started"
-);
-
-
-setText(
-  "telemetrySamplingState",
-  "NOT_STARTED"
-);
-
-
-setText(
-  "sprinklerSamplingState",
-  "Waiting"
-);
-
-
 console.log(
-  "AgriRover GUI V13 loaded"
+  "AgriRover GUI V14 loaded"
 );
 
 
@@ -6662,5 +5937,5 @@ console.log(
 
 
 console.log(
-  "Data: PACKET,LAT,LON,TEMP,HUMIDITY,N,P,K,REQ_N,REQ_P,REQ_K,ROLL,PITCH,YAW,ACC_X,ACC_Y,ACC_Z,BATTERY"
+  "Data : PACKET,LAT,LON,TEMP,HUMIDITY,N,P,K,REQ_N,REQ_P,REQ_K,ROLL,PITCH,YAW,ACC_X,ACC_Y,ACC_Z,BATTERY"
 );
