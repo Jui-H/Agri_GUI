@@ -1,12 +1,7 @@
 /* =========================================================
-   AGRIROVER GUI V14
+   AGRIROVER GUI V15
 
-   MAIN FIX:
-   Accepts both:
-   Data: 1,2,3,...
-   Data : 1,2,3,...
-
-   TELEMETRY — 18 FIELDS
+   ROVER -> GUI TELEMETRY
 
    0  PACKET_NUMBER
    1  LATITUDE
@@ -25,12 +20,53 @@
    14 ACC_X
    15 ACC_Y
    16 ACC_Z
-   17 BATTERY_PERCENT
+   17 BATTERY
+
+   Accepts:
+   Data:
+   Data :
+   DATA:
+   DATA :
 ========================================================= */
 
 
 /* =========================================================
-   BARC CROP OPTIMUM DATA
+   BATTERY CONFIGURATION
+========================================================= */
+
+/*
+   "AUTO"
+       78   -> interpreted as 78%
+       7.82 -> interpreted as battery voltage
+
+   "PERCENT"
+       last field is always percentage
+
+   "VOLTAGE"
+       last field is always voltage
+*/
+
+const BATTERY_INPUT_MODE =
+  "AUTO";
+
+
+/*
+   Voltage limits below are currently set
+   for a 2S Li-ion / LiPo battery.
+
+   Change these later if your rover battery
+   is different.
+*/
+
+const BATTERY_FULL_VOLTAGE =
+  8.4;
+
+const BATTERY_EMPTY_VOLTAGE =
+  6.4;
+
+
+/* =========================================================
+   CROP DATA
 ========================================================= */
 
 const CROP_DATA = [
@@ -276,7 +312,7 @@ let lastSensorUpdate =
 
 
 /* =========================================================
-   MAP
+   ROVER MAP
 ========================================================= */
 
 let roverMap =
@@ -322,23 +358,21 @@ let samplePackets =
 
 
 /* =========================================================
-   HISTORY / ALERTS
+   HISTORY
 ========================================================= */
 
 const HISTORY_KEY =
-  "agriroverTelemetryV14";
-
+  "agriroverTelemetryV15";
 
 let sensorRows =
   loadHistory();
-
 
 let systemAlerts =
   [];
 
 
 /* =========================================================
-   HELPERS
+   BASIC HELPERS
 ========================================================= */
 
 function el(id) {
@@ -388,24 +422,45 @@ function clamp(
 }
 
 
+function cropByKey(
+  key
+) {
+
+  return CROP_DATA.find(
+    crop =>
+      crop.key === key
+  ) || null;
+
+}
+
+
 function validGps(
   latitude,
   longitude
 ) {
 
   return (
+
     Number.isFinite(
       latitude
     ) &&
+
     Number.isFinite(
       longitude
     ) &&
+
     latitude !== 0 &&
+
     longitude !== 0 &&
+
     latitude >= -90 &&
+
     latitude <= 90 &&
+
     longitude >= -180 &&
+
     longitude <= 180
+
   );
 
 }
@@ -491,20 +546,181 @@ function toast(
         );
 
       },
-      2600
+      2500
     );
 
 }
 
 
-function cropByKey(
-  key
+/* =========================================================
+   BATTERY
+========================================================= */
+
+function batteryVoltageToPercent(
+  voltage
 ) {
 
-  return CROP_DATA.find(
-    crop =>
-      crop.key === key
-  ) || null;
+  const percent =
+    (
+      (
+        voltage -
+        BATTERY_EMPTY_VOLTAGE
+      ) /
+      (
+        BATTERY_FULL_VOLTAGE -
+        BATTERY_EMPTY_VOLTAGE
+      )
+    ) *
+    100;
+
+
+  return Math.round(
+    clamp(
+      percent,
+      0,
+      100
+    )
+  );
+
+}
+
+
+function processBatteryValue(
+  rawValue
+) {
+
+  const value =
+    Number(rawValue);
+
+
+  if (
+    !Number.isFinite(
+      value
+    )
+  ) {
+
+    return {
+
+      raw:
+        0,
+
+      voltage:
+        null,
+
+      percent:
+        0
+
+    };
+
+  }
+
+
+  /*
+     Always percentage
+  */
+
+  if (
+    BATTERY_INPUT_MODE ===
+    "PERCENT"
+  ) {
+
+    return {
+
+      raw:
+        value,
+
+      voltage:
+        null,
+
+      percent:
+        clamp(
+          Math.round(
+            value
+          ),
+          0,
+          100
+        )
+
+    };
+
+  }
+
+
+  /*
+     Always voltage
+  */
+
+  if (
+    BATTERY_INPUT_MODE ===
+    "VOLTAGE"
+  ) {
+
+    return {
+
+      raw:
+        value,
+
+      voltage:
+        value,
+
+      percent:
+        batteryVoltageToPercent(
+          value
+        )
+
+    };
+
+  }
+
+
+  /*
+     AUTO
+
+     <= 20 looks like battery voltage.
+
+     > 20 looks like percentage.
+  */
+
+  if (
+    value <= 20
+  ) {
+
+    return {
+
+      raw:
+        value,
+
+      voltage:
+        value,
+
+      percent:
+        batteryVoltageToPercent(
+          value
+        )
+
+    };
+
+  }
+
+
+  return {
+
+    raw:
+      value,
+
+    voltage:
+      null,
+
+    percent:
+      clamp(
+        Math.round(
+          value
+        ),
+        0,
+        100
+      )
+
+  };
 
 }
 
@@ -561,9 +777,9 @@ function navigate(
       ".nav-item"
     )
     .forEach(
-      button => {
+      item => {
 
-        button.classList.remove(
+        item.classList.remove(
           "active"
         );
 
@@ -695,7 +911,10 @@ async function connectBaseStation() {
 
 
   if (
-    !("serial" in navigator)
+    !(
+      "serial" in
+      navigator
+    )
   ) {
 
     alert(
@@ -757,7 +976,7 @@ async function connectBaseStation() {
     addAlert(
       "success",
       "Base station connected",
-      "USB serial communication established."
+      "USB Serial connection established."
     );
 
 
@@ -773,6 +992,7 @@ async function connectBaseStation() {
   catch (error) {
 
     console.error(
+      "Serial connection:",
       error
     );
 
@@ -1044,7 +1264,7 @@ async function readSerialLoop() {
   catch (error) {
 
     console.error(
-      "Serial error:",
+      "Serial reader:",
       error
     );
 
@@ -1069,19 +1289,27 @@ function processSerialLine(
   line
 ) {
 
+  if (
+    !line
+  )
+    return;
+
+
   line =
-    line.trim();
+    String(
+      line
+    )
+    .trim();
 
 
   /* =====================================================
-     EVENT STRINGS
+     SYSTEM MESSAGES
   ===================================================== */
 
   if (
-    line ===
-      "ROVER,SAMPLING_STARTED" ||
-    line ===
+    line.includes(
       "SAMPLING_STARTED"
+    )
   ) {
 
     handleSamplingStarted();
@@ -1092,10 +1320,9 @@ function processSerialLine(
 
 
   if (
-    line ===
-      "ROVER,SAMPLING_DONE" ||
-    line ===
+    line.includes(
       "SAMPLING_DONE"
+    )
   ) {
 
     handleSamplingDone();
@@ -1106,16 +1333,12 @@ function processSerialLine(
 
 
   if (
-    line ===
-      "ROVER,FERTILIZING" ||
-    line ===
-      "FERTILIZING"
+    line.includes(
+      "MISSION_DONE"
+    )
   ) {
 
-    setFertilizationState(
-      "FERTILIZING"
-    );
-
+    handleMissionDone();
 
     return;
 
@@ -1123,13 +1346,15 @@ function processSerialLine(
 
 
   if (
-    line ===
-      "ROVER,MISSION_DONE" ||
-    line ===
-      "MISSION_DONE"
+    line.includes(
+      "FERTILIZING"
+    )
   ) {
 
-    handleMissionDone();
+    setFertilizationState(
+      "FERTILIZING"
+    );
+
 
     return;
 
@@ -1159,18 +1384,22 @@ function processSerialLine(
   /* =====================================================
      TELEMETRY
 
-     Accept:
-     Data:
-     Data :
-     DATA:
-     DATA :
+     This matches your ESP32 output:
+
+     Data : 7,0.000000,...
   ===================================================== */
 
   if (
-    /^data\s*:/i.test(
+    /data\s*:/i.test(
       line
     )
   ) {
+
+    console.log(
+      "DATA LINE DETECTED:",
+      line
+    );
+
 
     const telemetry =
       parseTelemetry(
@@ -1188,6 +1417,14 @@ function processSerialLine(
 
     }
 
+    else {
+
+      console.error(
+        "Telemetry parser returned NULL"
+      );
+
+    }
+
 
     return;
 
@@ -1195,7 +1432,7 @@ function processSerialLine(
 
 
   /* =====================================================
-     RAW CSV
+     RAW 18-FIELD CSV
   ===================================================== */
 
   if (
@@ -1203,12 +1440,7 @@ function processSerialLine(
   ) {
 
     const fields =
-      line
-        .split(",")
-        .map(
-          item =>
-            item.trim()
-        );
+      line.split(",");
 
 
     if (
@@ -1217,7 +1449,7 @@ function processSerialLine(
     ) {
 
       const telemetry =
-        parseTelemetry(
+        parseRawCsvTelemetry(
           line
         );
 
@@ -1245,7 +1477,7 @@ function processSerialLine(
   ===================================================== */
 
   if (
-    /^rssi\s*:/i.test(
+    /rssi\s*:/i.test(
       line
     )
   ) {
@@ -1278,7 +1510,7 @@ function processSerialLine(
   ===================================================== */
 
   if (
-    /^snr\s*:/i.test(
+    /snr\s*:/i.test(
       line
     )
   ) {
@@ -1300,40 +1532,81 @@ function processSerialLine(
 
     }
 
+
+    return;
+
   }
 
 }
 
 
 /* =========================================================
-   TELEMETRY PARSER
+   PARSE "DATA :" TELEMETRY
 ========================================================= */
 
 function parseTelemetry(
   line
 ) {
 
-  let clean =
-    line.trim();
+  console.log(
+    "parseTelemetry received:",
+    line
+  );
 
 
   /*
-     Removes:
+     Take everything AFTER the colon.
+
+     This works for:
      Data:
      Data :
-     DATA:
      DATA :
   */
 
-  clean =
-    clean.replace(
-      /^data\s*:\s*/i,
-      ""
+  const colonIndex =
+    line.indexOf(":");
+
+
+  if (
+    colonIndex === -1
+  ) {
+
+    console.error(
+      "No colon found"
     );
 
 
+    return null;
+
+  }
+
+
+  const csv =
+    line
+      .substring(
+        colonIndex +
+        1
+      )
+      .trim();
+
+
+  return parseRawCsvTelemetry(
+    csv
+  );
+
+}
+
+
+/* =========================================================
+   PARSE RAW CSV
+========================================================= */
+
+function parseRawCsvTelemetry(
+  csv
+) {
+
   const values =
-    clean
+    csv
       .split(",")
       .map(
         value =>
@@ -1342,14 +1615,14 @@ function parseTelemetry(
 
 
   console.log(
-    "Telemetry raw:",
-    clean
+    "FIELD COUNT:",
+    values.length
   );
 
 
   console.log(
-    "Telemetry field count:",
-    values.length
+    "FIELDS:",
+    values
   );
 
 
@@ -1359,12 +1632,7 @@ function parseTelemetry(
   ) {
 
     console.error(
-      `Telemetry rejected: expected 18 fields, received ${values.length}`
-    );
-
-
-    console.log(
-      values
+      `Expected 18 fields but received ${values.length}`
     );
 
 
@@ -1373,97 +1641,134 @@ function parseTelemetry(
   }
 
 
+  const batteryRaw =
+    parseFloat(
+      values[17]
+    );
+
+
+  const batteryInfo =
+    processBatteryValue(
+      batteryRaw
+    );
+
+
   const data = {
 
     packetNumber:
-      Number(
-        values[0]
+      parseInt(
+        values[0],
+        10
       ),
 
+
     latitude:
-      Number(
+      parseFloat(
         values[1]
       ),
 
+
     longitude:
-      Number(
+      parseFloat(
         values[2]
       ),
 
+
     temperature:
-      Number(
+      parseFloat(
         values[3]
       ),
 
+
     humidity:
-      Number(
+      parseFloat(
         values[4]
       ),
 
+
     nitrogen:
-      Number(
+      parseFloat(
         values[5]
       ),
 
+
     phosphorus:
-      Number(
+      parseFloat(
         values[6]
       ),
 
+
     potassium:
-      Number(
+      parseFloat(
         values[7]
       ),
 
+
     requiredN:
-      Number(
+      parseFloat(
         values[8]
       ),
 
+
     requiredP:
-      Number(
+      parseFloat(
         values[9]
       ),
 
+
     requiredK:
-      Number(
+      parseFloat(
         values[10]
       ),
 
+
     roll:
-      Number(
+      parseFloat(
         values[11]
       ),
 
+
     pitch:
-      Number(
+      parseFloat(
         values[12]
       ),
 
+
     yaw:
-      Number(
+      parseFloat(
         values[13]
       ),
 
+
     accX:
-      Number(
+      parseFloat(
         values[14]
       ),
 
+
     accY:
-      Number(
+      parseFloat(
         values[15]
       ),
 
+
     accZ:
-      Number(
+      parseFloat(
         values[16]
       ),
 
+
+    batteryRaw:
+      batteryRaw,
+
+
+    batteryVoltage:
+      batteryInfo.voltage,
+
+
     battery:
-      Number(
-        values[17]
-      ),
+      batteryInfo.percent,
+
 
     timestamp:
       new Date()
@@ -1471,7 +1776,7 @@ function parseTelemetry(
   };
 
 
-  const numericValues = [
+  const requiredNumbers = [
 
     data.packetNumber,
 
@@ -1507,13 +1812,13 @@ function parseTelemetry(
 
     data.accZ,
 
-    data.battery
+    data.batteryRaw
 
   ];
 
 
   if (
-    numericValues.some(
+    requiredNumbers.some(
       value =>
         Number.isNaN(
           value
@@ -1522,11 +1827,7 @@ function parseTelemetry(
   ) {
 
     console.error(
-      "Telemetry rejected: invalid numeric value"
-    );
-
-
-    console.log(
+      "Telemetry contains invalid numeric data:",
       data
     );
 
@@ -1537,7 +1838,7 @@ function parseTelemetry(
 
 
   console.log(
-    "Telemetry parsed:",
+    "PARSED TELEMETRY:",
     data
   );
 
@@ -1548,12 +1849,18 @@ function parseTelemetry(
 
 
 /* =========================================================
-   PROCESS VALID TELEMETRY
+   PROCESS TELEMETRY
 ========================================================= */
 
 function processTelemetry(
   data
 ) {
+
+  console.log(
+    "PROCESS TELEMETRY RUNNING:",
+    data
+  );
+
 
   latestTelemetry =
     data;
@@ -1564,28 +1871,35 @@ function processTelemetry(
 
 
   lastSensorUpdate =
-    lastRoverPacketAt;
+    new Date();
 
 
   state.battery =
-    clamp(
-      data.battery,
-      0,
-      100
-    );
+    data.battery;
 
+
+  /*
+     IMPORTANT:
+
+     Even if:
+     GPS = 0,0
+     NPK = -1
+
+     the rest of the telemetry
+     is STILL displayed.
+  */
 
   setRoverOnline(
     true
   );
 
 
-  updateDashboard(
+  updateLiveTelemetry(
     data
   );
 
 
-  updateLiveTelemetry(
+  updateDashboard(
     data
   );
 
@@ -1595,9 +1909,7 @@ function processTelemetry(
   );
 
 
-  updateRoverLocation(
-    data
-  );
+  updateTimestampDisplay();
 
 
   saveTelemetrySample(
@@ -1605,8 +1917,21 @@ function processTelemetry(
   );
 
 
-  updateTimestampDisplay();
+  /*
+     GPS map is handled separately.
 
+     Invalid GPS does NOT stop telemetry.
+  */
+
+  updateRoverLocation(
+    data
+  );
+
+
+  /*
+     Heatmap sample is only collected
+     when GPS is valid and crop selected.
+  */
 
   collectMissionSample(
     data
@@ -1616,102 +1941,7 @@ function processTelemetry(
 
 
 /* =========================================================
-   DASHBOARD
-========================================================= */
-
-function updateDashboard(
-  data
-) {
-
-  setText(
-    "batteryValue",
-    `${Math.round(
-      data.battery
-    )}%`
-  );
-
-
-  setText(
-    "sideBattery",
-    `${Math.round(
-      data.battery
-    )}%`
-  );
-
-
-  if (
-    el(
-      "batteryBar"
-    )
-  ) {
-
-    el(
-      "batteryBar"
-    ).style.width =
-      `${clamp(
-        data.battery,
-        0,
-        100
-      )}%`;
-
-  }
-
-
-  if (
-    el(
-      "sideBatteryBar"
-    )
-  ) {
-
-    el(
-      "sideBatteryBar"
-    ).style.width =
-      `${clamp(
-        data.battery,
-        0,
-        100
-      )}%`;
-
-  }
-
-
-  setText(
-    "dashboardPacket",
-    data.packetNumber
-  );
-
-
-  setText(
-    "reqN",
-    data.requiredN
-      .toFixed(1)
-  );
-
-
-  setText(
-    "reqP",
-    data.requiredP
-      .toFixed(1)
-  );
-
-
-  setText(
-    "reqK",
-    data.requiredK
-      .toFixed(1)
-  );
-
-
-  setText(
-    "overviewState",
-    "Live"
-  );
-
-}
-
-
-/* =========================================================
-   LIVE TELEMETRY UI
+   LIVE TELEMETRY DISPLAY
 ========================================================= */
 
 function updateLiveTelemetry(
@@ -1720,9 +1950,14 @@ function updateLiveTelemetry(
 
   setText(
     "telemetryLastPacket",
-    formatTimestamp(
-      data.timestamp
-    )
+    new Date()
+      .toLocaleTimeString()
+  );
+
+
+  setText(
+    "telemetryDataAge",
+    "0 sec"
   );
 
 
@@ -1732,57 +1967,47 @@ function updateLiveTelemetry(
   );
 
 
+  /*
+     MEASURED NPK
+
+     -1 is allowed and will display.
+  */
+
   setText(
     "telemetryN",
-    Math.round(
-      data.nitrogen
-    )
+    data.nitrogen
   );
 
 
   setText(
     "telemetryP",
-    Math.round(
-      data.phosphorus
-    )
+    data.phosphorus
   );
 
 
   setText(
     "telemetryK",
-    Math.round(
-      data.potassium
-    )
+    data.potassium
   );
 
 
   setText(
     "telemetryTemperature",
     data.temperature
-      .toFixed(1)
+      .toFixed(2)
   );
 
 
   setText(
     "telemetryHumidity",
     data.humidity
-      .toFixed(1)
+      .toFixed(2)
   );
 
 
-  setText(
-    "telemetryGps",
-    `${data.latitude.toFixed(6)}, ${data.longitude.toFixed(6)}`
-  );
-
-
-  setText(
-    "telemetryBattery",
-    `${Math.round(
-      data.battery
-    )}%`
-  );
-
+  /*
+     REQUIRED NPK
+  */
 
   setText(
     "telemetryReqN",
@@ -1804,6 +2029,10 @@ function updateLiveTelemetry(
       .toFixed(2)
   );
 
+
+  /*
+     IMU
+  */
 
   setText(
     "telemetryRoll",
@@ -1844,41 +2073,208 @@ function updateLiveTelemetry(
   );
 
 
+  /*
+     BATTERY
+  */
+
+  setText(
+    "telemetryBattery",
+    `${data.battery}%`
+  );
+
+
+  /*
+     If your HTML later has
+     telemetryBatteryVoltage,
+     this will display voltage too.
+  */
+
+  if (
+    data.batteryVoltage !==
+    null
+  ) {
+
+    setText(
+      "telemetryBatteryVoltage",
+      `${data.batteryVoltage.toFixed(2)} V`
+    );
+
+  }
+
+
+  /*
+     GPS
+  */
+
+  if (
+    validGps(
+      data.latitude,
+      data.longitude
+    )
+  ) {
+
+    setText(
+      "telemetryGps",
+      `${data.latitude.toFixed(6)}, ${data.longitude.toFixed(6)}`
+    );
+
+
+    setText(
+      "telemetryGpsStatus",
+      "GPS Fix"
+    );
+
+  }
+
+  else {
+
+    setText(
+      "telemetryGps",
+      `${data.latitude.toFixed(6)}, ${data.longitude.toFixed(6)}`
+    );
+
+
+    setText(
+      "telemetryGpsStatus",
+      "No GPS Fix"
+    );
+
+  }
+
+
+  /*
+     LIVE STATUS
+  */
+
   setText(
     "telemetryStatusText",
     "Receiving telemetry"
   );
 
 
-  const dot =
+  const statusDot =
     el(
       "telemetryStatusDot"
     );
 
 
-  dot
-    ?.classList
-    .remove(
-      "disconnected-dot"
-    );
+  if (
+    statusDot
+  ) {
+
+    statusDot
+      .classList
+      .remove(
+        "disconnected-dot"
+      );
 
 
-  dot
-    ?.classList
-    .add(
-      "connected-dot"
-    );
+    statusDot
+      .classList
+      .add(
+        "connected-dot"
+      );
+
+  }
 
 }
 
 
 /* =========================================================
-   NPK
+   DASHBOARD
+========================================================= */
+
+function updateDashboard(
+  data
+) {
+
+  setText(
+    "batteryValue",
+    `${data.battery}%`
+  );
+
+
+  setText(
+    "sideBattery",
+    `${data.battery}%`
+  );
+
+
+  if (
+    el(
+      "batteryBar"
+    )
+  ) {
+
+    el(
+      "batteryBar"
+    ).style.width =
+      `${data.battery}%`;
+
+  }
+
+
+  if (
+    el(
+      "sideBatteryBar"
+    )
+  ) {
+
+    el(
+      "sideBatteryBar"
+    ).style.width =
+      `${data.battery}%`;
+
+  }
+
+
+  setText(
+    "dashboardPacket",
+    data.packetNumber
+  );
+
+
+  setText(
+    "reqN",
+    data.requiredN
+      .toFixed(1)
+  );
+
+
+  setText(
+    "reqP",
+    data.requiredP
+      .toFixed(1)
+  );
+
+
+  setText(
+    "reqK",
+    data.requiredK
+      .toFixed(1)
+  );
+
+
+  setText(
+    "overviewState",
+    "Live"
+  );
+
+}
+
+
+/* =========================================================
+   NPK GAUGES
 ========================================================= */
 
 function updateNpk(
   data
 ) {
+
+  /*
+     If sensor returns -1,
+     display -1 instead of rejecting.
+  */
 
   updateGauge(
     "nGauge",
@@ -1901,10 +2297,27 @@ function updateNpk(
   );
 
 
-  setText(
-    "sensorStatusText",
-    "Receiving rover data"
-  );
+  if (
+    data.nitrogen < 0 ||
+    data.phosphorus < 0 ||
+    data.potassium < 0
+  ) {
+
+    setText(
+      "sensorStatusText",
+      "Waiting for NPK sample"
+    );
+
+  }
+
+  else {
+
+    setText(
+      "sensorStatusText",
+      "NPK sample received"
+    );
+
+  }
 
 
   const dot =
@@ -1946,9 +2359,7 @@ function updateGauge(
 
 
   element.textContent =
-    Math.round(
-      value
-    );
+    value;
 
 
   const gauge =
@@ -1963,12 +2374,19 @@ function updateGauge(
     return;
 
 
+  const displayValue =
+    Math.max(
+      0,
+      value
+    );
+
+
   gauge.style
     .setProperty(
       "--value",
       clamp(
         (
-          value /
+          displayValue /
           max
         ) *
         100,
@@ -1986,9 +2404,27 @@ function updateGauge(
 
 function initializeMaps() {
 
+  if (
+    typeof L ===
+    "undefined"
+  ) {
+
+    console.error(
+      "Leaflet not loaded."
+    );
+
+
+    return;
+
+  }
+
+
   const initial = [
+
     23.7806,
+
     90.4071
+
   ];
 
 
@@ -2081,11 +2517,13 @@ function addBaseTiles(
   L.tileLayer(
     "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
     {
+
       maxZoom:
         20,
 
       attribution:
         "&copy; OpenStreetMap contributors"
+
     }
   )
   .addTo(
@@ -2094,6 +2532,10 @@ function addBaseTiles(
 
 }
 
+
+/* =========================================================
+   ROVER POINTER
+========================================================= */
 
 function createRoverIcon(
   yaw = 0
@@ -2137,16 +2579,20 @@ function updateRoverLocation(
 ) {
 
   const latitude =
-    Number(
-      data.latitude
-    );
+    data.latitude;
 
 
   const longitude =
-    Number(
-      data.longitude
-    );
+    data.longitude;
 
+
+  /*
+     IMPORTANT:
+
+     Invalid GPS only affects GPS/map.
+
+     It does NOT affect telemetry display.
+  */
 
   if (
     !validGps(
@@ -2155,22 +2601,27 @@ function updateRoverLocation(
     )
   ) {
 
-    [
-      "mapGpsStatus",
-      "largeMapGpsStatus",
-      "liveRoverGpsStatus",
+    setText(
       "dashboardGpsStatus",
-      "telemetryGpsStatus"
-    ]
-    .forEach(
-      id => {
+      "No Fix"
+    );
 
-        setText(
-          id,
-          "No GPS Fix"
-        );
 
-      }
+    setText(
+      "mapGpsStatus",
+      "No GPS Fix"
+    );
+
+
+    setText(
+      "largeMapGpsStatus",
+      "No GPS Fix"
+    );
+
+
+    setText(
+      "liveRoverGpsStatus",
+      "No Fix"
     );
 
 
@@ -2180,8 +2631,11 @@ function updateRoverLocation(
 
 
   const position = [
+
     latitude,
+
     longitude
+
   ];
 
 
@@ -2217,6 +2671,8 @@ function updateRoverLocation(
   }
 
 
+  /* SMALL MAP */
+
   if (
     roverMap
   ) {
@@ -2229,10 +2685,12 @@ function updateRoverLocation(
         L.marker(
           position,
           {
+
             icon:
               createRoverIcon(
                 data.yaw
               )
+
           }
         )
         .addTo(
@@ -2267,6 +2725,8 @@ function updateRoverLocation(
   }
 
 
+  /* LARGE MAP */
+
   if (
     largeRoverMap
   ) {
@@ -2279,10 +2739,12 @@ function updateRoverLocation(
         L.marker(
           position,
           {
+
             icon:
               createRoverIcon(
                 data.yaw
               )
+
           }
         )
         .addTo(
@@ -2342,16 +2804,38 @@ function updateRoverLocation(
 
 
   setText(
+    "dashboardGpsStatus",
+    "GPS Fix"
+  );
+
+
+  setText(
+    "mapGpsStatus",
+    "GPS Fix"
+  );
+
+
+  setText(
+    "largeMapGpsStatus",
+    "GPS Fix"
+  );
+
+
+  setText(
+    "liveRoverGpsStatus",
+    "GPS Fix"
+  );
+
+
+  setText(
     "mapLatitude",
-    latitude
-      .toFixed(6)
+    latitude.toFixed(6)
   );
 
 
   setText(
     "mapLongitude",
-    longitude
-      .toFixed(6)
+    longitude.toFixed(6)
   );
 
 
@@ -2370,15 +2854,13 @@ function updateRoverLocation(
 
   setText(
     "liveRoverLatitude",
-    latitude
-      .toFixed(6)
+    latitude.toFixed(6)
   );
 
 
   setText(
     "liveRoverLongitude",
-    longitude
-      .toFixed(6)
+    longitude.toFixed(6)
   );
 
 
@@ -2390,9 +2872,7 @@ function updateRoverLocation(
 
   setText(
     "liveRoverBattery",
-    `${Math.round(
-      data.battery
-    )}%`
+    `${data.battery}%`
   );
 
 
@@ -2411,25 +2891,6 @@ function updateRoverLocation(
   setText(
     "liveRoverLastPacket",
     formatTimestamp()
-  );
-
-
-  [
-    "liveRoverGpsStatus",
-    "mapGpsStatus",
-    "largeMapGpsStatus",
-    "dashboardGpsStatus",
-    "telemetryGpsStatus"
-  ]
-  .forEach(
-    id => {
-
-      setText(
-        id,
-        "GPS Fix"
-      );
-
-    }
   );
 
 
@@ -2470,7 +2931,7 @@ function updateRoverLocation(
 
 
 /* =========================================================
-   CENTER MAP
+   CENTER / CLEAR MAP
 ========================================================= */
 
 function centerOnRover(
@@ -2513,14 +2974,11 @@ el(
 )
   ?.addEventListener(
     "click",
-    () => {
-
+    () =>
       centerOnRover(
         roverMap,
         18
-      );
-
-    }
+      )
   );
 
 
@@ -2529,14 +2987,11 @@ el(
 )
   ?.addEventListener(
     "click",
-    () => {
-
+    () =>
       centerOnRover(
         largeRoverMap,
         19
-      );
-
-    }
+      )
   );
 
 
@@ -2681,13 +3136,10 @@ function renderCropButtons() {
       button => {
 
         button.onclick =
-          () => {
-
+          () =>
             selectCrop(
               button.dataset.crop
             );
-
-          };
 
       }
     );
@@ -2732,7 +3184,8 @@ function selectCrop(
 
         button.classList.toggle(
           "selected",
-          button.dataset.crop === key
+          button.dataset.crop ===
+            key
         );
 
       }
@@ -2850,14 +3303,11 @@ function selectCrop(
     "CROP"
   );
 
-
-  renderDeficiencyHeatmaps();
-
 }
 
 
 /* =========================================================
-   SEND CROP ASSIGNMENT
+   SEND CROP
 ========================================================= */
 
 async function sendCropAssignment() {
@@ -2867,7 +3317,7 @@ async function sendCropAssignment() {
   ) {
 
     toast(
-      "Select a crop first"
+      "Select crop first"
     );
 
 
@@ -2897,12 +3347,6 @@ async function sendCropAssignment() {
     setText(
       "cropSelectionStatus",
       "Assignment sent"
-    );
-
-
-    setText(
-      "missionStatus",
-      "Crop assigned"
     );
 
 
@@ -2957,7 +3401,7 @@ function handleCropAck(
 
 
 /* =========================================================
-   DEFICIENCY LOGIC
+   DEFICIENCY CALCULATION
 ========================================================= */
 
 function deficiencyPercent(
@@ -2994,34 +3438,69 @@ function deficiencyPercent(
 
 
 /* =========================================================
-   COLLECT SAMPLE
+   COLLECT SAMPLE FOR HEATMAP
 ========================================================= */
 
 function collectMissionSample(
   data
 ) {
 
+  /*
+     Need crop.
+  */
+
   if (
     !state.selectedCrop
-  )
+  ) {
+
     return;
 
+  }
+
+
+  /*
+     Need valid GPS.
+  */
 
   if (
     !validGps(
       data.latitude,
       data.longitude
     )
-  )
+  ) {
+
     return;
+
+  }
+
+
+  /*
+     IMPORTANT:
+
+     Don't create heatmap point
+     when NPK sensor says -1.
+  */
+
+  if (
+    data.nitrogen < 0 ||
+    data.phosphorus < 0 ||
+    data.potassium < 0
+  ) {
+
+    return;
+
+  }
 
 
   if (
     samplePackets.has(
       data.packetNumber
     )
-  )
+  ) {
+
     return;
+
+  }
 
 
   samplePackets.add(
@@ -3070,15 +3549,6 @@ function collectMissionSample(
         0,
         data.requiredK
       ),
-
-    temperature:
-      data.temperature,
-
-    humidity:
-      data.humidity,
-
-    battery:
-      data.battery,
 
     timestamp:
       data.timestamp
@@ -3142,7 +3612,7 @@ function collectMissionSample(
 
 
 /* =========================================================
-   GPS → LOCAL X/Y
+   GPS -> LOCAL XY
 ========================================================= */
 
 function convertSamplesToLocalXY(
@@ -3181,36 +3651,32 @@ function convertSamplesToLocalXY(
 
 
   return samples.map(
-    sample => {
+    sample => ({
 
-      return {
+      ...sample,
 
-        ...sample,
+      x:
+        (
+          sample.longitude -
+          originLon
+        ) *
+        metersPerLonDegree,
 
-        x:
-          (
-            sample.longitude -
-            originLon
-          ) *
-          metersPerLonDegree,
+      y:
+        (
+          sample.latitude -
+          originLat
+        ) *
+        metersPerLatDegree
 
-        y:
-          (
-            sample.latitude -
-            originLat
-          ) *
-          metersPerLatDegree
-
-      };
-
-    }
+    })
   );
 
 }
 
 
 /* =========================================================
-   GET DEFICIENCY VALUE
+   GET N/P/K DEFICIENCY
 ========================================================= */
 
 function getSampleDeficiency(
@@ -3476,7 +3942,7 @@ function heatmapColor(
       p -
       80
     ) /
-    20
+      20
   );
 
 }
@@ -3493,15 +3959,11 @@ function renderFieldHeatmap(
 ) {
 
   const canvas =
-    el(
-      canvasId
-    );
+    el(canvasId);
 
 
   const empty =
-    el(
-      emptyId
-    );
+    el(emptyId);
 
 
   if (
@@ -3608,15 +4070,15 @@ function renderFieldHeatmap(
 
   const xs =
     samples.map(
-      sample =>
-        sample.x
+      s =>
+        s.x
     );
 
 
   const ys =
     samples.map(
-      sample =>
-        sample.y
+      s =>
+        s.y
     );
 
 
@@ -3645,7 +4107,7 @@ function renderFieldHeatmap(
 
 
   /*
-     1 ft = 0.3048 m
+     1 ft sampling footprint
   */
 
   const footprint =
@@ -3919,7 +4381,7 @@ function renderFieldHeatmap(
 
 
   /*
-     Sample points
+     BLACK NUMBERED SAMPLE POINTS
   */
 
   samples.forEach(
@@ -4021,7 +4483,7 @@ function renderFieldHeatmap(
 
 
 /* =========================================================
-   RENDER BOTH HEATMAPS
+   RENDER HEATMAPS
 ========================================================= */
 
 function renderDeficiencyHeatmaps() {
@@ -4056,20 +4518,21 @@ function renderDeficiencyHeatmaps() {
     state.selectedCrop
   ) {
 
-    const nutrientName = {
+    const nutrientName =
+      {
 
-      n:
-        "Nitrogen",
+        n:
+          "Nitrogen",
 
-      p:
-        "Phosphorus",
+        p:
+          "Phosphorus",
 
-      k:
-        "Potassium"
+        k:
+          "Potassium"
 
-    }[
-      deficiencyNutrient
-    ];
+      }[
+        deficiencyNutrient
+      ];
 
 
     setText(
@@ -4089,7 +4552,7 @@ function renderDeficiencyHeatmaps() {
 
 
 /* =========================================================
-   HEATMAP NUTRIENT SELECTOR
+   N/P/K HEATMAP SELECTOR
 ========================================================= */
 
 function setDeficiencyNutrient(
@@ -4138,13 +4601,10 @@ el(
 )
   ?.addEventListener(
     "change",
-    event => {
-
+    event =>
       setDeficiencyNutrient(
         event.target.value
-      );
-
-    }
+      )
   );
 
 
@@ -4153,18 +4613,15 @@ el(
 )
   ?.addEventListener(
     "change",
-    event => {
-
+    event =>
       setDeficiencyNutrient(
         event.target.value
-      );
-
-    }
+      )
   );
 
 
 /* =========================================================
-   HEATMAP SUMMARY
+   DEFICIENCY SUMMARY
 ========================================================= */
 
 function updateDeficiencySummary() {
@@ -4237,6 +4694,71 @@ function updateDeficiencySummary() {
 
 
 /* =========================================================
+   RESET HEATMAP
+========================================================= */
+
+function resetMissionSamples() {
+
+  missionSamples =
+    [];
+
+
+  samplePackets =
+    new Set();
+
+
+  heatmapFinalized =
+    false;
+
+
+  setText(
+    "dashboardSamples",
+    "0 samples"
+  );
+
+
+  setText(
+    "dashboardHeatmapSamples",
+    "0"
+  );
+
+
+  setText(
+    "largeHeatmapSamples",
+    "0"
+  );
+
+
+  setText(
+    "heatmapStatusText",
+    "Waiting for rover sampling data."
+  );
+
+
+  setText(
+    "fullHeatmapStatus",
+    "Waiting for samples"
+  );
+
+
+  setText(
+    "heatmapGenerationState",
+    "Waiting"
+  );
+
+
+  updateDeficiencySummary();
+
+
+  renderDeficiencyHeatmaps();
+
+
+  updatePrescription();
+
+}
+
+
+/* =========================================================
    SAMPLING EVENTS
 ========================================================= */
 
@@ -4287,8 +4809,8 @@ function handleSamplingStarted() {
 
 
   setText(
-    "heatmapStatusText",
-    "Collecting GPS-referenced sampling points..."
+    "fullHeatmapStatus",
+    "Sampling"
   );
 
 
@@ -4357,12 +4879,6 @@ async function handleSamplingDone() {
   );
 
 
-  setText(
-    "heatmapStatusText",
-    `Sampling complete — ${missionSamples.length} points interpolated.`
-  );
-
-
   renderDeficiencyHeatmaps();
 
 
@@ -4383,71 +4899,6 @@ async function handleSamplingDone() {
 
 
   await startAutonomousFertilization();
-
-}
-
-
-/* =========================================================
-   RESET MISSION SAMPLES
-========================================================= */
-
-function resetMissionSamples() {
-
-  missionSamples =
-    [];
-
-
-  samplePackets =
-    new Set();
-
-
-  heatmapFinalized =
-    false;
-
-
-  setText(
-    "dashboardSamples",
-    "0 samples"
-  );
-
-
-  setText(
-    "dashboardHeatmapSamples",
-    "0"
-  );
-
-
-  setText(
-    "largeHeatmapSamples",
-    "0"
-  );
-
-
-  setText(
-    "heatmapStatusText",
-    "Waiting for rover sampling data."
-  );
-
-
-  setText(
-    "fullHeatmapStatus",
-    "Waiting for samples"
-  );
-
-
-  setText(
-    "heatmapGenerationState",
-    "Waiting"
-  );
-
-
-  updateDeficiencySummary();
-
-
-  renderDeficiencyHeatmaps();
-
-
-  updatePrescription();
 
 }
 
@@ -4656,7 +5107,7 @@ function updatePrescription() {
 
 
 /* =========================================================
-   START AUTONOMOUS FERTILIZATION
+   AUTONOMOUS FERTILIZATION
 ========================================================= */
 
 async function startAutonomousFertilization() {
@@ -4712,10 +5163,6 @@ async function startAutonomousFertilization() {
 
 }
 
-
-/* =========================================================
-   FERTILIZATION STATE
-========================================================= */
 
 function setFertilizationState(
   value
@@ -4775,7 +5222,7 @@ function handleMissionDone() {
 
 
 /* =========================================================
-   SEQUENCE
+   MISSION SEQUENCE
 ========================================================= */
 
 function updateSequence(
@@ -4856,7 +5303,7 @@ function updateSequence(
 
 
 /* =========================================================
-   SEND BASE COMMAND
+   SEND COMMAND
 ========================================================= */
 
 async function sendBaseCommand(
@@ -4900,6 +5347,13 @@ async function sendBaseCommand(
     );
 
 
+    addAlert(
+      "info",
+      "Command sent",
+      command
+    );
+
+
     return true;
 
   }
@@ -4926,7 +5380,7 @@ async function sendBaseCommand(
 
 
 /* =========================================================
-   MISSION CONTROL
+   MISSION BUTTONS
 ========================================================= */
 
 el(
@@ -4941,7 +5395,7 @@ el(
       ) {
 
         toast(
-          "Select crop first"
+          "Select a crop first"
         );
 
 
@@ -4993,38 +5447,44 @@ el(
 
 async function pauseRover() {
 
-  await sendBaseCommand(
-    "ROVER,PAUSE"
-  );
+  if (
+    await sendBaseCommand(
+      "ROVER,PAUSE"
+    )
+  ) {
+
+    state.paused =
+      true;
 
 
-  state.paused =
-    true;
+    setText(
+      "missionStatus",
+      "Paused"
+    );
 
-
-  setText(
-    "missionStatus",
-    "Paused"
-  );
+  }
 
 }
 
 
 async function resumeRover() {
 
-  await sendBaseCommand(
-    "ROVER,RESUME"
-  );
+  if (
+    await sendBaseCommand(
+      "ROVER,RESUME"
+    )
+  ) {
+
+    state.paused =
+      false;
 
 
-  state.paused =
-    false;
+    setText(
+      "missionStatus",
+      "Autonomous"
+    );
 
-
-  setText(
-    "missionStatus",
-    "Autonomous"
-  );
+  }
 
 }
 
@@ -5067,7 +5527,7 @@ el(
 
 
 /* =========================================================
-   EMERGENCY
+   EMERGENCY STOP
 ========================================================= */
 
 async function emergencyStop() {
@@ -5094,6 +5554,11 @@ async function emergencyStop() {
 
   setFertilizationState(
     "EMERGENCY OFF"
+  );
+
+
+  toast(
+    "Emergency stop sent"
   );
 
 }
@@ -5140,18 +5605,15 @@ el(
 )
   ?.addEventListener(
     "click",
-    () => {
-
+    () =>
       sendBaseCommand(
         "ROVER,STOP"
-      );
-
-    }
+      )
   );
 
 
 /* =========================================================
-   MANUAL ROVER MOVEMENT
+   EMERGENCY MANUAL MOVEMENT
 ========================================================= */
 
 const movementCommands = {
@@ -5248,13 +5710,10 @@ document
     button => {
 
       button.onclick =
-        () => {
-
+        () =>
           sendBaseCommand(
             `FERT,PUMP,${button.dataset.pump}`
           );
-
-        };
 
     }
   );
@@ -5268,13 +5727,10 @@ document
     button => {
 
       button.onclick =
-        () => {
-
+        () =>
           sendBaseCommand(
             `FERT,${button.dataset.valve},${button.dataset.action}`
           );
-
-        };
 
     }
   );
@@ -5285,18 +5741,15 @@ el(
 )
   ?.addEventListener(
     "click",
-    () => {
-
+    () =>
       sendBaseCommand(
         "FERT,ALL_OFF"
-      );
-
-    }
+      )
   );
 
 
 /* =========================================================
-   ROVER ONLINE STATUS
+   ROVER CONNECTION STATUS
 ========================================================= */
 
 function setRoverOnline(
@@ -5344,7 +5797,7 @@ function setRoverOnline(
 
 
 /* =========================================================
-   DATA AGE + LOST SIGNAL
+   DATA AGE
 ========================================================= */
 
 setInterval(
@@ -5352,11 +5805,8 @@ setInterval(
 
     if (
       !lastRoverPacketAt
-    ) {
-
+    )
       return;
-
-    }
 
 
     const age =
@@ -5405,7 +5855,7 @@ setInterval(
 
 
 /* =========================================================
-   TIMESTAMP
+   SENSOR TIMESTAMP
 ========================================================= */
 
 function updateTimestampDisplay() {
@@ -5423,7 +5873,7 @@ function updateTimestampDisplay() {
 
 
 /* =========================================================
-   RAW CONSOLE
+   RAW TELEMETRY MONITOR
 ========================================================= */
 
 function addTelemetryConsoleLine(
@@ -5516,14 +5966,24 @@ el(
     "click",
     () => {
 
-      el(
-        "telemetryConsole"
-      ).innerHTML =
-        `
-        <div class="console-empty">
-          Waiting for rover packets...
-        </div>
-        `;
+      const box =
+        el(
+          "telemetryConsole"
+        );
+
+
+      if (
+        box
+      ) {
+
+        box.innerHTML =
+          `
+          <div class="console-empty">
+            Waiting for rover packets...
+          </div>
+          `;
+
+      }
 
     }
   );
@@ -5626,6 +6086,12 @@ function saveTelemetrySample(
     accZ:
       data.accZ,
 
+    batteryRaw:
+      data.batteryRaw,
+
+    batteryVoltage:
+      data.batteryVoltage,
+
     battery:
       data.battery
 
@@ -5706,6 +6172,12 @@ function renderHistory(
       `;
 
 
+    setText(
+      "historySummary",
+      "No stored samples"
+    );
+
+
     return;
 
   }
@@ -5773,6 +6245,12 @@ function renderHistory(
       )
       .join("");
 
+
+  setText(
+    "historySummary",
+    `${rows.length} stored measurements`
+  );
+
 }
 
 
@@ -5799,6 +6277,20 @@ function addAlert(
         .toLocaleTimeString()
 
   });
+
+
+  if (
+    systemAlerts.length >
+    100
+  ) {
+
+    systemAlerts =
+      systemAlerts.slice(
+        0,
+        100
+      );
+
+  }
 
 
   renderAlerts();
@@ -5828,9 +6320,7 @@ function renderAlerts() {
       `
       <article class="alert">
 
-        <span>
-          ℹ
-        </span>
+        <span>ℹ</span>
 
         <div>
 
@@ -5844,9 +6334,7 @@ function renderAlerts() {
 
         </div>
 
-        <time>
-          --
-        </time>
+        <time>--</time>
 
       </article>
       `;
@@ -5893,6 +6381,33 @@ function renderAlerts() {
 
 
 /* =========================================================
+   RESIZE HEATMAP
+========================================================= */
+
+let heatmapResizeTimer =
+  null;
+
+
+window.addEventListener(
+  "resize",
+  () => {
+
+    clearTimeout(
+      heatmapResizeTimer
+    );
+
+
+    heatmapResizeTimer =
+      setTimeout(
+        renderDeficiencyHeatmaps,
+        150
+      );
+
+  }
+);
+
+
+/* =========================================================
    INITIALIZATION
 ========================================================= */
 
@@ -5926,8 +6441,25 @@ updateSequence(
 renderDeficiencyHeatmaps();
 
 
+setText(
+  "telemetrySamplingState",
+  "NOT_STARTED"
+);
+
+
+setText(
+  "dashboardSampling",
+  "Not started"
+);
+
+
 console.log(
-  "AgriRover GUI V14 loaded"
+  "================================="
+);
+
+
+console.log(
+  "AgriRover GUI V15 loaded"
 );
 
 
@@ -5938,4 +6470,9 @@ console.log(
 
 console.log(
   "Data : PACKET,LAT,LON,TEMP,HUMIDITY,N,P,K,REQ_N,REQ_P,REQ_K,ROLL,PITCH,YAW,ACC_X,ACC_Y,ACC_Z,BATTERY"
+);
+
+
+console.log(
+  "================================="
 );
