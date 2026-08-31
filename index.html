@@ -32,7 +32,7 @@
 
   <link
     rel="stylesheet"
-    href="styles.css?v=13"
+    href="styles.css?v=16"
   >
 </head>
 
@@ -234,6 +234,15 @@
         id="connectBaseStation"
       >
         🔌 Connect
+      </button>
+
+      <button
+        class="btn disconnect-btn"
+        id="disconnectBaseStation"
+        type="button"
+        hidden
+      >
+        ⏏ Disconnect
       </button>
 
 
@@ -860,8 +869,9 @@
           <h2>Crop Selection</h2>
 
           <p>
-            Select the crop that will be cultivated.
-            Its assignment is sent to the autonomous rover.
+            Select the crop that will be cultivated, or choose
+            “Not sure” to survey the field and receive the closest
+            crop match from the crops supported by this system.
           </p>
 
         </div>
@@ -878,7 +888,7 @@
             <h3>Select Crop</h3>
 
             <p class="section-description">
-              Choose one crop before starting the mission.
+              Choose a crop, or use recommendation mode if the farmer has not decided yet.
             </p>
 
           </div>
@@ -1040,6 +1050,53 @@
 
 
       </div>
+
+      <section
+        class="panel crop-recommendation-panel"
+        id="cropRecommendationPanel"
+        hidden
+      >
+        <div class="panel-heading">
+          <div>
+            <h3>Crop Recommendation</h3>
+            <p class="section-description">
+              After sampling, the GUI compares the field’s average N:P:K nutrient profile with the supported crop profiles and shows the closest match.
+            </p>
+          </div>
+          <span class="badge amber" id="cropRecommendationStatus">Waiting for survey</span>
+        </div>
+
+        <div class="recommendation-grid">
+          <div class="recommendation-main">
+            <small>Nearest crop match</small>
+            <strong id="recommendedCropName">Waiting for field data</strong>
+            <span id="recommendedCropBangla">—</span>
+          </div>
+
+          <div class="recommendation-metric">
+            <small>Profile similarity</small>
+            <strong id="recommendationScore">--%</strong>
+          </div>
+
+          <div class="recommendation-metric">
+            <small>Average measured N:P:K</small>
+            <strong id="surveyAverageNpk">-- : -- : --</strong>
+          </div>
+        </div>
+
+        <p class="recommendation-note" id="recommendationReason">
+          Start the survey mission to collect NPK samples. This is a nutrient-profile screening result among the crops in this project scope, not a complete agronomic suitability assessment.
+        </p>
+
+        <button
+          class="btn success"
+          id="useRecommendedCrop"
+          type="button"
+          disabled
+        >
+          Use Recommended Crop
+        </button>
+      </section>
 
     </section>
 
@@ -2451,7 +2508,7 @@
   src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
 ></script>
 
-<script src="app.js?v=13"></script>
+<script src="app.js?v=16"></script>
 
 </body>
 
