@@ -239,7 +239,20 @@ const CROP_DATA = [
       "Rainfed condition: fertilizers basal during final land preparation."
   }
 
-];
+ ];
+
+
+const SURVEY_OPTION = {
+  key: "RECOMMEND",
+  name: "Not sure — Recommend a crop",
+  bangla: "ফসল নির্ধারিত নয় — সুপারিশ নিন",
+  type: "Decision Support",
+  n: null,
+  p: null,
+  k: null,
+  condition: "Field survey first. A closest nutrient-profile crop match will be suggested after sampling.",
+  isSurvey: true
+};
 
 
 /* =========================================================
@@ -255,6 +268,8 @@ const state = {
   selectedCrop: null,
 
   cropSent: false,
+
+  recommendedCrop: null,
 
   samplingState:
     "NOT_STARTED",
@@ -425,6 +440,12 @@ function clamp(
 function cropByKey(
   key
 ) {
+
+  if (
+    key === SURVEY_OPTION.key
+  ) {
+    return SURVEY_OPTION;
+  }
 
   return CROP_DATA.find(
     crop =>
@@ -903,7 +924,9 @@ async function connectBaseStation() {
     baseStationConnected
   ) {
 
-    await disconnectBaseStation();
+    toast(
+      "Base Station is already connected"
+    );
 
     return;
 
@@ -1078,6 +1101,16 @@ async function disconnectBaseStation() {
     false
   );
 
+  addAlert(
+    "info",
+    "Base station disconnected",
+    "USB Serial connection closed by user."
+  );
+
+  toast(
+    "Base Station disconnected"
+  );
+
 }
 
 
@@ -1094,6 +1127,11 @@ function updateBaseStatus(
   const button =
     el(
       "connectBaseStation"
+    );
+
+  const disconnectButton =
+    el(
+      "disconnectBaseStation"
     );
 
 
@@ -1130,12 +1168,21 @@ function updateBaseStatus(
         ? "✓ Connected"
         : "🔌 Connect";
 
+    button.disabled =
+      connected;
 
     button.classList.toggle(
       "connected",
       connected
     );
 
+  }
+
+  if (
+    disconnectButton
+  ) {
+    disconnectButton.hidden =
+      !connected;
   }
 
 }
@@ -1147,6 +1194,15 @@ el(
   ?.addEventListener(
     "click",
     connectBaseStation
+  );
+
+
+el(
+  "disconnectBaseStation"
+)
+  ?.addEventListener(
+    "click",
+    disconnectBaseStation
   );
 
 
@@ -1358,6 +1414,21 @@ function processSerialLine(
 
     return;
 
+  }
+
+
+  if (
+    line === "ROVER,MODE_ACK,SURVEY"
+  ) {
+
+    state.cropSent = true;
+
+    setText(
+      "cropSelectionStatus",
+      "Survey mode acknowledged"
+    );
+
+    return;
   }
 
 
@@ -3048,6 +3119,12 @@ function cropIcon(
 ) {
 
   if (
+    crop?.isSurvey
+  ) {
+    return "🧭";
+  }
+
+  if (
     crop.type.includes(
       "Cereal"
     )
@@ -3088,13 +3165,17 @@ function renderCropButtons() {
     return;
 
 
+  const cropOptions =
+    [SURVEY_OPTION, ...CROP_DATA];
+
+
   container.innerHTML =
-    CROP_DATA
+    cropOptions
       .map(
         crop =>
           `
           <button
-            class="crop-select-btn"
+            class="crop-select-btn ${crop.isSurvey ? "survey-option" : ""}"
             data-crop="${crop.key}"
           >
 
@@ -3214,19 +3295,19 @@ function selectCrop(
 
   setText(
     "cropOptN",
-    crop.n
+    crop.isSurvey ? "—" : crop.n
   );
 
 
   setText(
     "cropOptP",
-    crop.p
+    crop.isSurvey ? "—" : crop.p
   );
 
 
   setText(
     "cropOptK",
-    crop.k
+    crop.isSurvey ? "—" : crop.k
   );
 
 
@@ -3244,7 +3325,9 @@ function selectCrop(
 
   setText(
     "cropCommandPreview",
-    `ROVER,CROP,${crop.key}`
+    crop.isSurvey
+      ? "ROVER,MODE,SURVEY"
+      : `ROVER,CROP,${crop.key}`
   );
 
 
@@ -3262,7 +3345,9 @@ function selectCrop(
 
   setText(
     "dashboardTargetNpk",
-    `N ${crop.n} • P ${crop.p} • K ${crop.k} kg/ha`
+    crop.isSurvey
+      ? "Survey mode — crop target pending"
+      : `N ${crop.n} • P ${crop.p} • K ${crop.k} kg/ha`
   );
 
 
@@ -3296,6 +3381,53 @@ function selectCrop(
   );
 
 
+  const recommendationPanel =
+    el(
+      "cropRecommendationPanel"
+    );
+
+  if (
+    recommendationPanel
+  ) {
+    recommendationPanel.hidden =
+      !crop.isSurvey;
+  }
+
+  state.recommendedCrop =
+    null;
+
+  setText(
+    "recommendedCropName",
+    "Waiting for field data"
+  );
+
+  setText(
+    "recommendedCropBangla",
+    "—"
+  );
+
+  setText(
+    "recommendationScore",
+    "--%"
+  );
+
+  setText(
+    "surveyAverageNpk",
+    "-- : -- : --"
+  );
+
+  const useButton =
+    el(
+      "useRecommendedCrop"
+    );
+
+  if (
+    useButton
+  ) {
+    useButton.disabled =
+      true;
+  }
+
   resetMissionSamples();
 
 
@@ -3327,7 +3459,9 @@ async function sendCropAssignment() {
 
 
   const command =
-    `ROVER,CROP,${state.selectedCrop.key}`;
+    state.selectedCrop.isSurvey
+      ? "ROVER,MODE,SURVEY"
+      : `ROVER,CROP,${state.selectedCrop.key}`;
 
 
   const sent =
@@ -3557,24 +3691,30 @@ function collectMissionSample(
 
 
   sample.defN =
-    deficiencyPercent(
-      sample.requiredN,
-      state.selectedCrop.n
-    );
+    state.selectedCrop.isSurvey
+      ? 0
+      : deficiencyPercent(
+          sample.requiredN,
+          state.selectedCrop.n
+        );
 
 
   sample.defP =
-    deficiencyPercent(
-      sample.requiredP,
-      state.selectedCrop.p
-    );
+    state.selectedCrop.isSurvey
+      ? 0
+      : deficiencyPercent(
+          sample.requiredP,
+          state.selectedCrop.p
+        );
 
 
   sample.defK =
-    deficiencyPercent(
-      sample.requiredK,
-      state.selectedCrop.k
-    );
+    state.selectedCrop.isSurvey
+      ? 0
+      : deficiencyPercent(
+          sample.requiredK,
+          state.selectedCrop.k
+        );
 
 
   missionSamples.push(
@@ -4821,6 +4961,202 @@ function handleSamplingStarted() {
 }
 
 
+function normalizeNpkProfile(n, p, k) {
+
+  const values = [
+    Math.max(0, Number(n) || 0),
+    Math.max(0, Number(p) || 0),
+    Math.max(0, Number(k) || 0)
+  ];
+
+  const total =
+    values[0] + values[1] + values[2];
+
+  if (total <= 0) {
+    return null;
+  }
+
+  return values.map(
+    value => value / total
+  );
+}
+
+
+function recommendCropFromSurvey() {
+
+  if (
+    !missionSamples.length
+  ) {
+    return null;
+  }
+
+  const avg = key =>
+    missionSamples.reduce(
+      (sum, sample) => sum + sample[key],
+      0
+    ) / missionSamples.length;
+
+  const avgN = avg("measuredN");
+  const avgP = avg("measuredP");
+  const avgK = avg("measuredK");
+
+  const fieldProfile =
+    normalizeNpkProfile(avgN, avgP, avgK);
+
+  if (!fieldProfile) {
+    return null;
+  }
+
+  let best = null;
+
+  CROP_DATA.forEach(crop => {
+
+    const cropProfile =
+      normalizeNpkProfile(
+        crop.n,
+        crop.p,
+        crop.k
+      );
+
+    if (!cropProfile) {
+      return;
+    }
+
+    const distance = Math.sqrt(
+      Math.pow(fieldProfile[0] - cropProfile[0], 2) +
+      Math.pow(fieldProfile[1] - cropProfile[1], 2) +
+      Math.pow(fieldProfile[2] - cropProfile[2], 2)
+    );
+
+    if (
+      !best ||
+      distance < best.distance
+    ) {
+      best = {
+        crop,
+        distance
+      };
+    }
+  });
+
+  if (!best) {
+    return null;
+  }
+
+  /*
+     Both profiles are normalized first, so the comparison
+     is dimensionless. This ranks only N:P:K profile similarity;
+     it is not a complete agronomic suitability model.
+  */
+
+  const similarity = clamp(
+    (1 - best.distance / Math.sqrt(2)) * 100,
+    0,
+    100
+  );
+
+  return {
+    crop: best.crop,
+    similarity,
+    avgN,
+    avgP,
+    avgK
+  };
+}
+
+
+function showSurveyRecommendation() {
+
+  const result =
+    recommendCropFromSurvey();
+
+  const panel =
+    el("cropRecommendationPanel");
+
+  if (panel) {
+    panel.hidden = false;
+  }
+
+  if (!result) {
+    setText(
+      "cropRecommendationStatus",
+      "Insufficient data"
+    );
+
+    setText(
+      "recommendationReason",
+      "No valid NPK samples were available for a crop-profile recommendation."
+    );
+
+    return null;
+  }
+
+  state.recommendedCrop =
+    result.crop;
+
+  setText(
+    "cropRecommendationStatus",
+    "Recommendation ready"
+  );
+
+  setText(
+    "recommendedCropName",
+    result.crop.name
+  );
+
+  setText(
+    "recommendedCropBangla",
+    result.crop.bangla
+  );
+
+  setText(
+    "recommendationScore",
+    `${result.similarity.toFixed(1)}%`
+  );
+
+  setText(
+    "surveyAverageNpk",
+    `${result.avgN.toFixed(1)} : ${result.avgP.toFixed(1)} : ${result.avgK.toFixed(1)}`
+  );
+
+  setText(
+    "recommendationReason",
+    `${result.crop.name} is the closest N:P:K profile match among the ${CROP_DATA.length} crops in this project scope. ` +
+    "The comparison uses normalized nutrient proportions so it does not directly compare mg/kg with kg/ha. " +
+    "Use it as a screening suggestion; season, pH, water availability, soil type and other agronomic factors are not included."
+  );
+
+  const useButton =
+    el("useRecommendedCrop");
+
+  if (useButton) {
+    useButton.disabled = false;
+  }
+
+  return result;
+}
+
+
+el("useRecommendedCrop")
+  ?.addEventListener(
+    "click",
+    () => {
+      if (!state.recommendedCrop) {
+        return;
+      }
+
+      const key =
+        state.recommendedCrop.key;
+
+      selectCrop(key);
+
+      toast(
+        `${state.recommendedCrop?.name || "Recommended crop"} selected`
+      );
+    }
+  );
+
+
 async function handleSamplingDone() {
 
   state.samplingState =
@@ -4879,6 +5215,43 @@ async function handleSamplingDone() {
   );
 
 
+  if (
+    state.selectedCrop?.isSurvey
+  ) {
+
+    showSurveyRecommendation();
+
+    setText(
+      "missionStatus",
+      "Survey complete — recommendation ready"
+    );
+
+    setText(
+      "heatmapGenerationState",
+      "Survey complete"
+    );
+
+    setText(
+      "fullHeatmapStatus",
+      `${missionSamples.length} samples • Recommendation mode`
+    );
+
+    updateSequence(
+      "HEATMAP"
+    );
+
+    toast(
+      "Survey complete — crop recommendation ready"
+    );
+
+    navigate(
+      "crop"
+    );
+
+    return;
+  }
+
+
   renderDeficiencyHeatmaps();
 
 
@@ -4908,6 +5281,12 @@ async function handleSamplingDone() {
 ========================================================= */
 
 function calculatePrescription() {
+
+  if (
+    state.selectedCrop?.isSurvey
+  ) {
+    return null;
+  }
 
   if (
     !missionSamples.length
@@ -5415,7 +5794,9 @@ el(
 
         const cropSent =
           await sendBaseCommand(
-            `ROVER,CROP,${state.selectedCrop.key}`
+            state.selectedCrop.isSurvey
+              ? "ROVER,MODE,SURVEY"
+              : `ROVER,CROP,${state.selectedCrop.key}`
           );
 
 
