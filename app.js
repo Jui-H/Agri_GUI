@@ -70,7 +70,7 @@ const BATTERY_EMPTY_VOLTAGE =
 ========================================================= */
 
 const SAMPLING_AREA_SIZE_FT = 1.5;
-const SAMPLES_PER_FERTILIZATION_AREA = 4;
+const SAMPLES_PER_FERTILIZATION_AREA = 3;
 const FERTILIZATION_AREA_SIZE_FT = 6;
 const FERTILIZATION_AREA_M2 =
   FERTILIZATION_AREA_SIZE_FT *
@@ -3570,7 +3570,7 @@ function deficiencyPercent(
 /* =========================================================
    COLLECT FIELD SAMPLE
 
-   Every four valid, unique NPK samples are grouped internally
+   Every three valid, unique NPK samples are grouped internally
    into one 6 ft × 6 ft fertilization area. The map remains
    visually clean: no area boxes or labels are drawn.
 ========================================================= */
@@ -3678,7 +3678,7 @@ function rebuildFertilizationAreas() {
 
   fertilizationAreas = [];
 
-  for (let i = 0; i + 3 < valid.length; i += SAMPLES_PER_FERTILIZATION_AREA) {
+  for (let i = 0; i + SAMPLES_PER_FERTILIZATION_AREA - 1 < valid.length; i += SAMPLES_PER_FERTILIZATION_AREA) {
 
     const samples = valid.slice(i, i + SAMPLES_PER_FERTILIZATION_AREA);
 
@@ -3701,11 +3701,35 @@ function rebuildFertilizationAreas() {
       requiredK: 0
     };
 
-    area.defN = deficiencyFromReference(area.measuredN, state.nutrientReferences.n);
-    area.defP = deficiencyFromReference(area.measuredP, state.nutrientReferences.p);
-    area.defK = deficiencyFromReference(area.measuredK, state.nutrientReferences.k);
+    const relativeDefN = deficiencyFromReference(area.measuredN, state.nutrientReferences.n);
+    const relativeDefP = deficiencyFromReference(area.measuredP, state.nutrientReferences.p);
+    const relativeDefK = deficiencyFromReference(area.measuredK, state.nutrientReferences.k);
 
-    if (!state.selectedCrop?.isSurvey) {
+    if (state.selectedCrop?.isSurvey) {
+      // Farmer has not selected a crop yet:
+      // show the measured field-relative nutrient pattern only.
+      area.defN = relativeDefN;
+      area.defP = relativeDefP;
+      area.defK = relativeDefK;
+    } else {
+      // Crop selected:
+      // keep the sensor comparison dimensionless, then weight the spatial
+      // deficiency by that crop's BARC N:P:K target profile.
+      const targetTotal =
+        state.selectedCrop.n +
+        state.selectedCrop.p +
+        state.selectedCrop.k;
+
+      const nWeight = targetTotal > 0 ? state.selectedCrop.n / targetTotal : 0;
+      const pWeight = targetTotal > 0 ? state.selectedCrop.p / targetTotal : 0;
+      const kWeight = targetTotal > 0 ? state.selectedCrop.k / targetTotal : 0;
+
+      const maxWeight = Math.max(nWeight, pWeight, kWeight, 0.000001);
+
+      area.defN = clamp(relativeDefN * (nWeight / maxWeight), 0, 100);
+      area.defP = clamp(relativeDefP * (pWeight / maxWeight), 0, 100);
+      area.defK = clamp(relativeDefK * (kWeight / maxWeight), 0, 100);
+
       area.requiredN = state.selectedCrop.n * area.defN / 100;
       area.requiredP = state.selectedCrop.p * area.defP / 100;
       area.requiredK = state.selectedCrop.k * area.defK / 100;
@@ -5661,7 +5685,7 @@ async function startAutonomousFertilization() {
   const area = latestFertilizationArea();
 
   if (!area) {
-    toast("Four valid samples are required before fertilization");
+    toast("Three valid samples are required before fertilization");
     return;
   }
 
