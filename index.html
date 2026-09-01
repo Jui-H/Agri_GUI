@@ -571,14 +571,6 @@
                 <span>Connect the Raspberry Pi when both devices are on the same network.</span>
               </div>
             </div>
-
-            <div class="dashboard-detection-strip">
-              <div class="detection-state-card"><small>Detection</small><strong id="piDetectionState">WAITING</strong></div>
-              <div class="detection-state-card"><small>Confidence</small><strong id="piDetectionConfidence">--%</strong></div>
-              <div class="detection-state-card"><small>Object</small><strong id="piDetectionClass">--</strong></div>
-              <div class="detection-state-card"><small>Bounding box</small><strong id="piDetectionBox">-- × -- px</strong></div>
-              <div class="detection-state-card full"><small>Metadata</small><strong id="piMetadataState">Not connected</strong></div>
-            </div>
           </div>
         </section>
 
@@ -1526,7 +1518,7 @@
           <h2>Nutrient Deficiency Heatmap</h2>
 
           <p>
-            Spatial deficiency surface generated from grouped field measurements. Four sampling locations form one 6 × 6 ft fertilization calculation area, while the map remains visually smooth and uncluttered.
+            Spatial deficiency surface generated from grouped field measurements. After every three valid sampling locations, the GUI generates one fertilization calculation area, while the map remains visually smooth and uncluttered.
           </p>
 
         </div>
@@ -1683,7 +1675,7 @@
 
         <p class="heatmap-help">
 
-          Black numbered circles are the actual rover sampling locations. Internally, every four samples are averaged for one 6 × 6 ft fertilization calculation area. Only the smooth deficiency surface is shown on the map.
+          Black numbered circles are the actual rover sampling locations. Internally, every three valid samples are averaged to generate one fertilization calculation area. Only the smooth deficiency surface is shown on the map.
 
         </p>
 
@@ -2247,14 +2239,13 @@
           <h2>Emergency Rover Override</h2>
 
           <p>
-            The rover operates autonomously. These controls are
-            intended only for safety, recovery and testing.
+            The rover operates autonomously. This control is reserved for immediate emergency shutdown.
           </p>
 
         </div>
 
         <span class="badge red">
-          MANUAL OVERRIDE
+          EMERGENCY ONLY
         </span>
 
       </div>
@@ -2268,36 +2259,13 @@
           <h3>Autonomous Safety Controls</h3>
 
 
-          <div class="big-safety-buttons">
-
-            <button
-              class="btn warning"
-              id="manualPause"
-            >
-              PAUSE ROVER
-            </button>
-
-            <button
-              class="btn primary"
-              id="manualResume"
-            >
-              RESUME AUTONOMOUS
-            </button>
-
-            <button
-              class="btn danger"
-              id="manualStop"
-            >
-              STOP ROVER
-            </button>
-
+          <div class="big-safety-buttons emergency-only">
             <button
               class="emergency large"
               id="manualEstop"
             >
               EMERGENCY STOP
             </button>
-
           </div>
 
         </section>
@@ -2397,7 +2365,7 @@
           <h2>Field Setup</h2>
 
           <p>
-            Configure field information used for fertilizer calculation. Sampling uses 1.5 × 1.5 ft representative areas; four valid samples form one 6 × 6 ft fertilization calculation area.
+            Configure field information used for fertilizer calculation. Sampling uses 1.5 × 1.5 ft representative areas; three valid samples generate one fertilization calculation area.
           </p>
 
         </div>
