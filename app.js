@@ -1,5 +1,5 @@
 /* =========================================================
-   AGRIROVER GUI V17
+   AGRIROVER GUI FINAL V18
 
    ROVER -> GUI TELEMETRY
 
@@ -11,9 +11,9 @@
    5  NITROGEN
    6  PHOSPHORUS
    7  POTASSIUM
-   8  REQUIRED_N
-   9  REQUIRED_P
-   10 REQUIRED_K
+   8  LEGACY_REQUIRED_N  (ignored by GUI)
+   9  LEGACY_REQUIRED_P  (ignored by GUI)
+   10 LEGACY_REQUIRED_K  (ignored by GUI)
    11 ROLL
    12 PITCH
    13 YAW
@@ -1224,6 +1224,10 @@ function updateBaseStatus(
       !connected;
   }
 
+  if (!lastRoverPacketAt || !connected) {
+    setRoverOnline(false);
+  }
+
 }
 
 
@@ -1903,12 +1907,6 @@ function parseRawCsvTelemetry(
     data.phosphorus,
 
     data.potassium,
-
-    data.requiredN,
-
-    data.requiredP,
-
-    data.requiredK,
 
     data.roll,
 
@@ -5630,6 +5628,19 @@ function updatePrescription() {
     setText("areaPTime", formatMaybe(latestArea.application.pTimeSec, 2, " s"));
     setText("areaKTime", formatMaybe(latestArea.application.kTimeSec, 2, " s"));
 
+    const totalVolume = [latestArea.application.nVolumeMl, latestArea.application.pVolumeMl, latestArea.application.kVolumeMl]
+      .every(value => Number.isFinite(value))
+      ? latestArea.application.nVolumeMl + latestArea.application.pVolumeMl + latestArea.application.kVolumeMl
+      : null;
+
+    const totalTime = [latestArea.application.nTimeSec, latestArea.application.pTimeSec, latestArea.application.kTimeSec]
+      .every(value => Number.isFinite(value))
+      ? latestArea.application.nTimeSec + latestArea.application.pTimeSec + latestArea.application.kTimeSec
+      : null;
+
+    setText("areaTotalVolume", formatMaybe(totalVolume, 2, " mL"));
+    setText("areaTotalTime", formatMaybe(totalTime, 2, " s"));
+
     setText("calibrationState", calibrationReady() ? "Ready" : "Calibration required");
   }
 
@@ -6290,19 +6301,19 @@ function setRoverOnline(
     );
 
 
+  const roverText = online
+    ? "Connected"
+    : (baseStationConnected ? "No Signal" : "Waiting");
+
   setText(
     "roverStatusText",
-    online
-      ? "Connected"
-      : "No Signal"
+    roverText
   );
 
 
   setText(
     "sideRoverStatus",
-    online
-      ? "Connected"
-      : "No Signal"
+    roverText
   );
 
 }
@@ -6572,13 +6583,13 @@ function saveTelemetrySample(
       data.potassium,
 
     requiredN:
-      data.requiredN,
+      latestFertilizationArea()?.requiredN ?? null,
 
     requiredP:
-      data.requiredP,
+      latestFertilizationArea()?.requiredP ?? null,
 
     requiredK:
-      data.requiredK,
+      latestFertilizationArea()?.requiredK ?? null,
 
     roll:
       data.roll,
@@ -6892,6 +6903,169 @@ function renderAlerts() {
 }
 
 
+
+
+/* =========================================================
+   RASPBERRY PI VIDEO + DETECTION METADATA
+
+   Expected Pi endpoints:
+     GET /video_feed  -> multipart MJPEG
+     GET /detection   -> JSON, for example:
+       {
+         "detected": true,
+         "confidence": 0.94,
+         "class": "sprinkler",
+         "width": 186,
+         "height": 241
+       }
+
+   The Pi must allow CORS for /detection when the GUI runs
+   from localhost or another origin.
+========================================================= */
+
+let piDetectionTimer = null;
+let piCameraConnected = false;
+
+function normalizePiBaseUrl(value) {
+  return String(value || "").trim().replace(/\/+$/, "");
+}
+
+function setPiCameraUi(connected, message = "") {
+  piCameraConnected = connected;
+
+  const stateBadge = el("piVideoState");
+  const overlay = el("piVideoOverlay");
+  const connectButton = el("connectPiCamera");
+  const disconnectButton = el("disconnectPiCamera");
+
+  if (stateBadge) {
+    stateBadge.textContent = connected ? "LIVE" : "OFFLINE";
+    stateBadge.className = connected ? "badge green" : "badge blue";
+  }
+
+  if (overlay) {
+    overlay.classList.toggle("hidden", connected);
+    if (!connected && message) {
+      const strong = overlay.querySelector("strong");
+      const span = overlay.querySelector("span");
+      if (strong) strong.textContent = "Camera offline";
+      if (span) span.textContent = message;
+    }
+  }
+
+  if (connectButton) connectButton.disabled = connected;
+  if (disconnectButton) disconnectButton.disabled = !connected;
+}
+
+function clearPiDetectionUi(message = "Not connected") {
+  setText("piDetectionState", "WAITING");
+  setText("piDetectionConfidence", "--%");
+  setText("piDetectionClass", "--");
+  setText("piDetectionBox", "-- × -- px");
+  setText("piMetadataState", message);
+}
+
+function updatePiDetectionUi(data) {
+  const detected = Boolean(data?.detected);
+  const confidenceRaw = Number(data?.confidence);
+  const confidence = Number.isFinite(confidenceRaw)
+    ? (confidenceRaw <= 1 ? confidenceRaw * 100 : confidenceRaw)
+    : null;
+
+  const width = Number(data?.width ?? data?.bbox_width);
+  const height = Number(data?.height ?? data?.bbox_height);
+  const klass = data?.class || data?.label || (detected ? "sprinkler" : "--");
+
+  setText("piDetectionState", detected ? "SPRINKLER DETECTED" : "SEARCHING");
+  setText("piDetectionConfidence", confidence === null ? "--%" : `${confidence.toFixed(1)}%`);
+  setText("piDetectionClass", klass);
+  setText(
+    "piDetectionBox",
+    Number.isFinite(width) && Number.isFinite(height)
+      ? `${Math.round(width)} × ${Math.round(height)} px`
+      : "-- × -- px"
+  );
+  setText("piMetadataState", "Receiving detection metadata");
+}
+
+async function pollPiDetection(baseUrl) {
+  try {
+    const response = await fetch(`${baseUrl}/detection`, {
+      method: "GET",
+      cache: "no-store"
+    });
+
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const data = await response.json();
+    updatePiDetectionUi(data);
+  }
+  catch (error) {
+    setText(
+      "piMetadataState",
+      "Video may still work • /detection unavailable or CORS blocked"
+    );
+  }
+}
+
+function connectPiCameraFeed() {
+  const baseUrl = normalizePiBaseUrl(el("piServerAddress")?.value);
+  const image = el("piCameraFeed");
+
+  if (!baseUrl || !/^https?:\/\//i.test(baseUrl)) {
+    toast("Enter the Pi address including http:// or https://");
+    return;
+  }
+
+  localStorage.setItem("agriroverPiServerAddress", baseUrl);
+
+  clearInterval(piDetectionTimer);
+  clearPiDetectionUi("Connecting...");
+
+  if (image) {
+    image.onload = () => {
+      setPiCameraUi(true);
+      setText("piMetadataState", "Video connected");
+    };
+
+    image.onerror = () => {
+      setPiCameraUi(false, "Could not open /video_feed. Check the Pi address, Flask server and network.");
+    };
+
+    image.src = `${baseUrl}/video_feed?ts=${Date.now()}`;
+  }
+
+  piDetectionTimer = setInterval(() => pollPiDetection(baseUrl), 500);
+  pollPiDetection(baseUrl);
+}
+
+function disconnectPiCameraFeed() {
+  clearInterval(piDetectionTimer);
+  piDetectionTimer = null;
+
+  const image = el("piCameraFeed");
+  if (image) {
+    image.onload = null;
+    image.onerror = null;
+    image.removeAttribute("src");
+  }
+
+  setPiCameraUi(false, "Camera disconnected. Connect again when the Pi is ready.");
+  clearPiDetectionUi();
+}
+
+el("connectPiCamera")?.addEventListener("click", connectPiCameraFeed);
+el("disconnectPiCamera")?.addEventListener("click", disconnectPiCameraFeed);
+
+const savedPiAddress = localStorage.getItem("agriroverPiServerAddress");
+if (savedPiAddress && el("piServerAddress")) {
+  el("piServerAddress").value = savedPiAddress;
+}
+
+setPiCameraUi(false);
+clearPiDetectionUi();
+
+
 /* =========================================================
    FERTILIZER CALIBRATION UI
 ========================================================= */
@@ -6942,6 +7116,9 @@ function saveFertilizerCalibration() {
 
 el("saveFertilizerCalibration")
   ?.addEventListener("click", saveFertilizerCalibration);
+
+el("applyCurrentPrescription")
+  ?.addEventListener("click", startAutonomousFertilization);
 
 
 /* =========================================================
@@ -7026,7 +7203,7 @@ console.log(
 
 
 console.log(
-  "AgriRover GUI V17 loaded"
+  "AgriRover GUI FINAL V18 loaded"
 );
 
 
