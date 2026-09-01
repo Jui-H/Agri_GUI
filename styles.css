@@ -4781,3 +4781,123 @@ th {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* =========================================================
+   AGRIROVER V17 — ZONE CALCULATION / CALIBRATION
+========================================================= */
+
+.calibration-panel,
+.pi-video-panel {
+  margin-bottom: 12px;
+}
+
+.calibration-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.calibration-grid label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.calibration-grid input {
+  width: 100%;
+  padding: 10px 11px;
+  border: 1px solid var(--line-light);
+  border-radius: 7px;
+  background: var(--panel-dark);
+  color: var(--text);
+  outline: none;
+}
+
+.calibration-grid input:focus {
+  border-color: var(--blue);
+}
+
+.treatment-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.treatment-meta span {
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--panel-dark);
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.treatment-meta strong {
+  color: var(--text);
+  margin-left: 4px;
+}
+
+.treatment-grid {
+  display: grid;
+  grid-template-columns: .55fr 1fr 1.25fr 1.45fr 1.45fr;
+  gap: 8px;
+  align-items: center;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 9px;
+}
+
+.treatment-grid-head {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.pi-video-placeholder {
+  min-height: 260px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  text-align: center;
+  border: 1px dashed var(--line-light);
+  border-radius: 10px;
+  background: radial-gradient(circle at center, rgba(50,196,217,.06), transparent 60%), var(--panel-dark);
+  color: var(--muted);
+}
+
+.pi-video-placeholder strong {
+  color: var(--text);
+}
+
+.pi-video-icon {
+  font-size: 34px;
+  color: var(--cyan);
+}
+
+@media (max-width: 900px) {
+  .calibration-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .treatment-grid {
+    grid-template-columns: .45fr .8fr 1fr 1.2fr 1.2fr;
+    font-size: 8px;
+  }
+}
+
+@media (max-width: 620px) {
+  .calibration-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .treatment-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .treatment-grid-head {
+    display: none;
+  }
+}
