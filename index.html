@@ -719,7 +719,7 @@
 
             <span>
               Sample footprint
-              <strong>1 ft²</strong>
+              <strong>1.5 × 1.5 ft</strong>
             </span>
 
             <span>
@@ -1584,8 +1584,7 @@
           <h2>Nutrient Deficiency Heatmap</h2>
 
           <p>
-            Spatial deficiency surface generated from
-            GPS-referenced rover samples using IDW interpolation.
+            Spatial deficiency surface generated from grouped field measurements. Four sampling locations form one 6 × 6 ft fertilization calculation area, while the map remains visually smooth and uncluttered.
           </p>
 
         </div>
@@ -1658,7 +1657,7 @@
 
             <span>
               Numbered black points will represent actual
-              1 ft² rover sampling locations.
+              rover sampling locations.
             </span>
 
           </div>
@@ -1677,7 +1676,7 @@
 
           <span>
             Sampling Footprint
-            <strong>1 ft²</strong>
+            <strong>1.5 × 1.5 ft</strong>
           </span>
 
           <span>
@@ -1742,10 +1741,7 @@
 
         <p class="heatmap-help">
 
-          Black numbered circles are the actual rover
-          sampling locations. The coloured area between
-          the points is interpolated from fertilizer
-          deficiency severity.
+          Black numbered circles are the actual rover sampling locations. Internally, every four samples are averaged for one 6 × 6 ft fertilization calculation area. Only the smooth deficiency surface is shown on the map.
 
         </p>
 
@@ -1791,8 +1787,7 @@
           <h2>Fertilizer Prescription</h2>
 
           <p>
-            Prescription generated from the rover-calculated
-            required N/P/K values.
+            Required N/P/K is calculated in the GUI from the selected crop and measured field deficiency. Application timing is calculated for each 6 × 6 ft treatment area after fertilizer calibration.
           </p>
 
         </div>
@@ -2082,6 +2077,48 @@
       </div>
 
 
+      <section class="panel calibration-panel">
+
+        <div class="panel-heading">
+          <div>
+            <h3>Fertilizer Calibration</h3>
+            <p class="section-description">Enter the actual nutrient concentration of each solution and the measured liquid flow. These values are required before the GUI calculates valve / sprinkler ON time.</p>
+          </div>
+          <span class="badge amber" id="calibrationStateSprinkler">Use measured values</span>
+        </div>
+
+        <div class="calibration-grid">
+          <label>N concentration (g/L)<input id="nSolutionConcentration" type="number" min="0" step="0.01" placeholder="Measure / prepare value"></label>
+          <label>P concentration (g/L)<input id="pSolutionConcentration" type="number" min="0" step="0.01" placeholder="Measure / prepare value"></label>
+          <label>K concentration (g/L)<input id="kSolutionConcentration" type="number" min="0" step="0.01" placeholder="Measure / prepare value"></label>
+          <label>N flow (mL/min)<input id="nFlowRate" type="number" min="0" step="0.1" placeholder="Measured flow"></label>
+          <label>P flow (mL/min)<input id="pFlowRate" type="number" min="0" step="0.1" placeholder="Measured flow"></label>
+          <label>K flow (mL/min)<input id="kFlowRate" type="number" min="0" step="0.1" placeholder="Measured flow"></label>
+        </div>
+
+        <div class="action-row">
+          <button class="btn primary" id="saveFertilizerCalibration">Save Calibration</button>
+        </div>
+
+      </section>
+
+
+      <section class="panel pi-video-panel">
+        <div class="panel-heading">
+          <div>
+            <h3>Raspberry Pi Sprinkler Detection Feed</h3>
+            <p class="section-description">Reserved for the Pi processed camera stream. The video connection can be enabled later without changing the nutrient or fertilizer logic.</p>
+          </div>
+          <span class="badge blue">Not connected</span>
+        </div>
+        <div class="pi-video-placeholder">
+          <div class="pi-video-icon">▣</div>
+          <strong>Pi camera feed will appear here</strong>
+          <span>Sprinkler detection video integration is intentionally left inactive for now.</span>
+        </div>
+      </section>
+
+
       <div class="two-column">
 
         <section class="panel">
@@ -2107,6 +2144,39 @@
             </div>
 
           </div>
+
+        </section>
+
+
+        <section class="panel treatment-calculation-panel">
+
+          <div class="panel-heading">
+            <h3>Current 6 × 6 ft Treatment Calculation</h3>
+            <span class="badge amber" id="calibrationState">Calibration required</span>
+          </div>
+
+          <div class="treatment-meta">
+            <span>Application area <strong id="treatmentAreaSize">6 × 6 ft</strong></span>
+            <span>Representative measurements <strong id="treatmentSampleCount">4 samples</strong></span>
+          </div>
+
+          <div class="treatment-grid treatment-grid-head">
+            <span>Nutrient</span><span>Deficiency</span><span>Required</span><span>Solution</span><span>ON time</span>
+          </div>
+
+          <div class="treatment-grid">
+            <strong>N</strong><span id="areaDefN">--%</span><span id="areaReqN">--</span><span id="areaNVolume">Calibration required</span><span id="areaNTime">Calibration required</span>
+          </div>
+          <div class="treatment-grid">
+            <strong>P</strong><span id="areaDefP">--%</span><span id="areaReqP">--</span><span id="areaPVolume">Calibration required</span><span id="areaPTime">Calibration required</span>
+          </div>
+          <div class="treatment-grid">
+            <strong>K</strong><span id="areaDefK">--%</span><span id="areaReqK">--</span><span id="areaKVolume">Calibration required</span><span id="areaKTime">Calibration required</span>
+          </div>
+
+          <p class="panel-note">
+            Deficiency uses the 95th-percentile field reading as the robust nutrient reference. Required kg/ha = crop target × deficiency fraction. ON time appears only after real solution concentration and measured flow are entered.
+          </p>
 
         </section>
 
@@ -2392,7 +2462,7 @@
           <h2>Field Setup</h2>
 
           <p>
-            Configure field information used for fertilizer calculation.
+            Configure field information used for fertilizer calculation. Sampling uses 1.5 × 1.5 ft representative areas; four valid samples form one 6 × 6 ft fertilization calculation area.
           </p>
 
         </div>
@@ -2508,7 +2578,7 @@
   src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
 ></script>
 
-<script src="app.js?v=16"></script>
+<script src="app.js?v=17"></script>
 
 </body>
 
