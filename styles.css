@@ -5090,3 +5090,74 @@ th {
 .emergency-only .emergency.large {
   width: 100%;
 }
+
+
+/* =========================================================
+   V20 — LARGE DASHBOARD PI VIDEO
+   Only enlarges the existing sprinkler camera viewer.
+========================================================= */
+
+.dashboard-video-panel .dashboard-pi-layout {
+  display: block !important;
+  width: 100% !important;
+}
+
+.dashboard-video-panel .dashboard-pi-frame {
+  display: block !important;
+  width: 100% !important;
+  max-width: none !important;
+
+  /* Large viewer like the requested layout */
+  aspect-ratio: 16 / 9;
+  min-height: 440px !important;
+  height: auto !important;
+
+  margin: 0 !important;
+  box-sizing: border-box;
+}
+
+.dashboard-video-panel #piCameraFeed {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 440px !important;
+
+  /* Keep the full processed Pi frame visible */
+  object-fit: contain !important;
+  object-position: center center;
+
+  background: #020b12;
+}
+
+.dashboard-video-panel .pi-video-overlay {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+/* Keep the controls aligned above the full-width viewer */
+.dashboard-video-panel .dashboard-pi-connect {
+  width: 100%;
+}
+
+/* On very wide monitors, prevent the camera viewer becoming excessively tall */
+@media (min-width: 1500px) {
+  .dashboard-video-panel .dashboard-pi-frame {
+    aspect-ratio: 2 / 1;
+  }
+}
+
+/* Responsive camera height */
+@media (max-width: 900px) {
+  .dashboard-video-panel .dashboard-pi-frame,
+  .dashboard-video-panel #piCameraFeed {
+    min-height: 360px !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .dashboard-video-panel .dashboard-pi-frame,
+  .dashboard-video-panel #piCameraFeed {
+    min-height: 260px !important;
+  }
+}
