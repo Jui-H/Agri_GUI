@@ -1,5 +1,5 @@
 /* =========================================================
-   AGRIROVER GUI V15
+   AGRIROVER GUI V17
 
    ROVER -> GUI TELEMETRY
 
@@ -63,6 +63,37 @@ const BATTERY_FULL_VOLTAGE =
 
 const BATTERY_EMPTY_VOLTAGE =
   6.4;
+
+
+/* =========================================================
+   SAMPLING / FERTILIZATION GEOMETRY
+========================================================= */
+
+const SAMPLING_AREA_SIZE_FT = 1.5;
+const SAMPLES_PER_FERTILIZATION_AREA = 4;
+const FERTILIZATION_AREA_SIZE_FT = 6;
+const FERTILIZATION_AREA_M2 =
+  FERTILIZATION_AREA_SIZE_FT *
+  FERTILIZATION_AREA_SIZE_FT *
+  0.09290304;
+
+
+/* =========================================================
+   FERTILIZER CALIBRATION
+
+   Concentration = grams of nutrient per litre of solution.
+   Flow = measured liquid flow in mL/min.
+   Zero means calibration has not been entered yet.
+========================================================= */
+
+const fertilizerCalibration = {
+  nConcentration: Number(localStorage.getItem("agriroverNConcentration") || 0),
+  pConcentration: Number(localStorage.getItem("agriroverPConcentration") || 0),
+  kConcentration: Number(localStorage.getItem("agriroverKConcentration") || 0),
+  nFlow: Number(localStorage.getItem("agriroverNFlow") || 0),
+  pFlow: Number(localStorage.getItem("agriroverPFlow") || 0),
+  kFlow: Number(localStorage.getItem("agriroverKFlow") || 0)
+};
 
 
 /* =========================================================
@@ -271,6 +302,8 @@ const state = {
 
   recommendedCrop: null,
 
+  nutrientReferences: { n: 0, p: 0, k: 0 },
+
   samplingState:
     "NOT_STARTED",
 
@@ -370,6 +403,12 @@ let missionSamples =
 
 let samplePackets =
   new Set();
+
+let sampleSignatures =
+  new Set();
+
+let fertilizationAreas =
+  [];
 
 
 /* =========================================================
@@ -2076,29 +2115,8 @@ function updateLiveTelemetry(
   );
 
 
-  /*
-     REQUIRED NPK
-  */
-
-  setText(
-    "telemetryReqN",
-    data.requiredN
-      .toFixed(2)
-  );
-
-
-  setText(
-    "telemetryReqP",
-    data.requiredP
-      .toFixed(2)
-  );
-
-
-  setText(
-    "telemetryReqK",
-    data.requiredK
-      .toFixed(2)
-  );
+  /* GUI-calculated required N/P/K are refreshed from completed 4-sample areas. */
+  updateCurrentRequirementDisplay();
 
 
   /*
@@ -2304,26 +2322,6 @@ function updateDashboard(
     data.packetNumber
   );
 
-
-  setText(
-    "reqN",
-    data.requiredN
-      .toFixed(1)
-  );
-
-
-  setText(
-    "reqP",
-    data.requiredP
-      .toFixed(1)
-  );
-
-
-  setText(
-    "reqK",
-    data.requiredK
-      .toFixed(1)
-  );
 
 
   setText(
@@ -3572,191 +3570,260 @@ function deficiencyPercent(
 
 
 /* =========================================================
-   COLLECT SAMPLE FOR HEATMAP
+   COLLECT FIELD SAMPLE
+
+   Every four valid, unique NPK samples are grouped internally
+   into one 6 ft × 6 ft fertilization area. The map remains
+   visually clean: no area boxes or labels are drawn.
 ========================================================= */
 
-function collectMissionSample(
-  data
-) {
+function collectMissionSample(data) {
 
-  /*
-     Need crop.
-  */
+  if (!state.selectedCrop) return;
 
-  if (
-    !state.selectedCrop
-  ) {
-
-    return;
-
-  }
-
-
-  /*
-     Need valid GPS.
-  */
-
-  if (
-    !validGps(
-      data.latitude,
-      data.longitude
-    )
-  ) {
-
-    return;
-
-  }
-
-
-  /*
-     IMPORTANT:
-
-     Don't create heatmap point
-     when NPK sensor says -1.
-  */
+  if (!validGps(data.latitude, data.longitude)) return;
 
   if (
     data.nitrogen < 0 ||
     data.phosphorus < 0 ||
     data.potassium < 0
-  ) {
+  ) return;
 
-    return;
+  const signature = [
+    data.latitude.toFixed(6),
+    data.longitude.toFixed(6),
+    data.nitrogen.toFixed(2),
+    data.phosphorus.toFixed(2),
+    data.potassium.toFixed(2)
+  ].join("|");
 
-  }
+  if (sampleSignatures.has(signature)) return;
 
+  sampleSignatures.add(signature);
+  samplePackets.add(data.packetNumber);
 
-  if (
-    samplePackets.has(
-      data.packetNumber
-    )
-  ) {
+  missionSamples.push({
+    sampleNumber: missionSamples.length + 1,
+    packetNumber: data.packetNumber,
+    latitude: data.latitude,
+    longitude: data.longitude,
+    measuredN: data.nitrogen,
+    measuredP: data.phosphorus,
+    measuredK: data.potassium,
+    timestamp: data.timestamp
+  });
 
-    return;
+  rebuildFertilizationAreas();
 
-  }
-
-
-  samplePackets.add(
-    data.packetNumber
-  );
-
-
-  const sample = {
-
-    sampleNumber:
-      missionSamples.length +
-      1,
-
-    packetNumber:
-      data.packetNumber,
-
-    latitude:
-      data.latitude,
-
-    longitude:
-      data.longitude,
-
-    measuredN:
-      data.nitrogen,
-
-    measuredP:
-      data.phosphorus,
-
-    measuredK:
-      data.potassium,
-
-    requiredN:
-      Math.max(
-        0,
-        data.requiredN
-      ),
-
-    requiredP:
-      Math.max(
-        0,
-        data.requiredP
-      ),
-
-    requiredK:
-      Math.max(
-        0,
-        data.requiredK
-      ),
-
-    timestamp:
-      data.timestamp
-
-  };
-
-
-  sample.defN =
-    state.selectedCrop.isSurvey
-      ? 0
-      : deficiencyPercent(
-          sample.requiredN,
-          state.selectedCrop.n
-        );
-
-
-  sample.defP =
-    state.selectedCrop.isSurvey
-      ? 0
-      : deficiencyPercent(
-          sample.requiredP,
-          state.selectedCrop.p
-        );
-
-
-  sample.defK =
-    state.selectedCrop.isSurvey
-      ? 0
-      : deficiencyPercent(
-          sample.requiredK,
-          state.selectedCrop.k
-        );
-
-
-  missionSamples.push(
-    sample
-  );
-
-
-  setText(
-    "dashboardSamples",
-    `${missionSamples.length} samples`
-  );
-
-
-  setText(
-    "dashboardHeatmapSamples",
-    missionSamples.length
-  );
-
-
-  setText(
-    "largeHeatmapSamples",
-    missionSamples.length
-  );
-
+  setText("dashboardSamples", `${missionSamples.length} samples`);
+  setText("dashboardHeatmapSamples", missionSamples.length);
+  setText("largeHeatmapSamples", missionSamples.length);
 
   renderDeficiencyHeatmaps();
-
-
   updateDeficiencySummary();
-
-
   updatePrescription();
 
+  if (state.selectedCrop?.isSurvey) {
+    updateSurveyAverages();
+  }
 }
 
+
+/* =========================================================
+   PERCENTILE REFERENCE
+
+   95th percentile is used instead of the single maximum so
+   one unusually high sensor reading does not define the field.
+========================================================= */
+
+function percentile(values, q) {
+  const clean = values
+    .filter(Number.isFinite)
+    .sort((a, b) => a - b);
+
+  if (!clean.length) return 0;
+  if (clean.length === 1) return clean[0];
+
+  const position = (clean.length - 1) * q;
+  const lower = Math.floor(position);
+  const upper = Math.ceil(position);
+  const weight = position - lower;
+
+  if (lower === upper) return clean[lower];
+
+  return clean[lower] * (1 - weight) + clean[upper] * weight;
+}
+
+
+function deficiencyFromReference(measured, reference) {
+  if (!Number.isFinite(measured) || !Number.isFinite(reference) || reference <= 0) {
+    return 0;
+  }
+
+  return clamp((1 - measured / reference) * 100, 0, 100);
+}
+
+
+function rebuildFertilizationAreas() {
+
+  const valid = missionSamples.filter(sample =>
+    sample.measuredN >= 0 &&
+    sample.measuredP >= 0 &&
+    sample.measuredK >= 0
+  );
+
+  state.nutrientReferences = {
+    n: percentile(valid.map(s => s.measuredN), 0.95),
+    p: percentile(valid.map(s => s.measuredP), 0.95),
+    k: percentile(valid.map(s => s.measuredK), 0.95)
+  };
+
+  fertilizationAreas = [];
+
+  for (let i = 0; i + 3 < valid.length; i += SAMPLES_PER_FERTILIZATION_AREA) {
+
+    const samples = valid.slice(i, i + SAMPLES_PER_FERTILIZATION_AREA);
+
+    const average = key =>
+      samples.reduce((sum, sample) => sum + sample[key], 0) / samples.length;
+
+    const area = {
+      areaIndex: fertilizationAreas.length + 1,
+      samples,
+      latitude: average("latitude"),
+      longitude: average("longitude"),
+      measuredN: average("measuredN"),
+      measuredP: average("measuredP"),
+      measuredK: average("measuredK"),
+      defN: 0,
+      defP: 0,
+      defK: 0,
+      requiredN: 0,
+      requiredP: 0,
+      requiredK: 0
+    };
+
+    area.defN = deficiencyFromReference(area.measuredN, state.nutrientReferences.n);
+    area.defP = deficiencyFromReference(area.measuredP, state.nutrientReferences.p);
+    area.defK = deficiencyFromReference(area.measuredK, state.nutrientReferences.k);
+
+    if (!state.selectedCrop?.isSurvey) {
+      area.requiredN = state.selectedCrop.n * area.defN / 100;
+      area.requiredP = state.selectedCrop.p * area.defP / 100;
+      area.requiredK = state.selectedCrop.k * area.defK / 100;
+    }
+
+    area.application = calculateAreaApplication(area);
+
+    fertilizationAreas.push(area);
+  }
+
+  updateCurrentRequirementDisplay();
+}
+
+
+function latestFertilizationArea() {
+  return fertilizationAreas.length
+    ? fertilizationAreas[fertilizationAreas.length - 1]
+    : null;
+}
+
+
+function updateCurrentRequirementDisplay() {
+  const area = latestFertilizationArea();
+
+  if (!area || state.selectedCrop?.isSurvey) {
+    setText("reqN", "--");
+    setText("reqP", "--");
+    setText("reqK", "--");
+    setText("telemetryReqN", "--");
+    setText("telemetryReqP", "--");
+    setText("telemetryReqK", "--");
+    return;
+  }
+
+  setText("reqN", area.requiredN.toFixed(2));
+  setText("reqP", area.requiredP.toFixed(2));
+  setText("reqK", area.requiredK.toFixed(2));
+  setText("telemetryReqN", area.requiredN.toFixed(2));
+  setText("telemetryReqP", area.requiredP.toFixed(2));
+  setText("telemetryReqK", area.requiredK.toFixed(2));
+}
+
+
+/* =========================================================
+   FERTILIZER MASS / VOLUME / ON-TIME
+========================================================= */
+
+function nutrientMassForArea(requiredKgHa) {
+  return requiredKgHa * FERTILIZATION_AREA_M2 / 10;
+}
+
+
+function solutionVolumeMl(requiredKgHa, concentrationGL) {
+  if (!Number.isFinite(concentrationGL) || concentrationGL <= 0) return null;
+
+  const nutrientGrams = nutrientMassForArea(requiredKgHa);
+  return nutrientGrams / concentrationGL * 1000;
+}
+
+
+function onTimeSeconds(volumeMl, flowMlMin) {
+  if (
+    volumeMl === null ||
+    !Number.isFinite(flowMlMin) ||
+    flowMlMin <= 0
+  ) return null;
+
+  return volumeMl / flowMlMin * 60;
+}
+
+
+function calculateAreaApplication(area) {
+  const nVolume = solutionVolumeMl(area.requiredN, fertilizerCalibration.nConcentration);
+  const pVolume = solutionVolumeMl(area.requiredP, fertilizerCalibration.pConcentration);
+  const kVolume = solutionVolumeMl(area.requiredK, fertilizerCalibration.kConcentration);
+
+  return {
+    nMassG: nutrientMassForArea(area.requiredN),
+    pMassG: nutrientMassForArea(area.requiredP),
+    kMassG: nutrientMassForArea(area.requiredK),
+    nVolumeMl: nVolume,
+    pVolumeMl: pVolume,
+    kVolumeMl: kVolume,
+    nTimeSec: onTimeSeconds(nVolume, fertilizerCalibration.nFlow),
+    pTimeSec: onTimeSeconds(pVolume, fertilizerCalibration.pFlow),
+    kTimeSec: onTimeSeconds(kVolume, fertilizerCalibration.kFlow)
+  };
+}
+
+
+function calibrationReady() {
+  return (
+    fertilizerCalibration.nConcentration > 0 &&
+    fertilizerCalibration.pConcentration > 0 &&
+    fertilizerCalibration.kConcentration > 0 &&
+    fertilizerCalibration.nFlow > 0 &&
+    fertilizerCalibration.pFlow > 0 &&
+    fertilizerCalibration.kFlow > 0
+  );
+}
+
+
+function formatMaybe(value, digits = 2, suffix = "") {
+  return value === null || !Number.isFinite(value)
+    ? "Calibration required"
+    : `${value.toFixed(digits)}${suffix}`;
+}
 
 /* =========================================================
    GPS -> LOCAL XY
 ========================================================= */
 
 function convertSamplesToLocalXY(
-  samples
+  samples,
+  originLat = null,
+  originLon = null
 ) {
 
   if (
@@ -3765,12 +3832,12 @@ function convertSamplesToLocalXY(
     return [];
 
 
-  const originLat =
-    samples[0].latitude;
+  originLat =
+    originLat ?? samples[0].latitude;
 
 
-  const originLon =
-    samples[0].longitude;
+  originLon =
+    originLon ?? samples[0].longitude;
 
 
   const latitudeRad =
@@ -3846,6 +3913,57 @@ function getSampleDeficiency(
 
   return sample.defN;
 
+}
+
+
+/* =========================================================
+   RAW SURVEY NUTRIENT HELPERS
+========================================================= */
+
+function getMeasuredNutrient(sample, nutrient) {
+  if (nutrient === "p") return sample.measuredP;
+  if (nutrient === "k") return sample.measuredK;
+  return sample.measuredN;
+}
+
+
+function interpolateMeasuredIDW(x, y, samples, nutrient, power = 2) {
+  let numerator = 0;
+  let denominator = 0;
+
+  for (const sample of samples) {
+    const dx = x - sample.x;
+    const dy = y - sample.y;
+    const distanceSquared = dx * dx + dy * dy;
+
+    if (distanceSquared < 0.000001) {
+      return getMeasuredNutrient(sample, nutrient);
+    }
+
+    const distance = Math.sqrt(distanceSquared);
+    const weight = 1 / Math.pow(distance, power);
+
+    numerator += weight * getMeasuredNutrient(sample, nutrient);
+    denominator += weight;
+  }
+
+  return denominator > 0 ? numerator / denominator : 0;
+}
+
+
+function relativeSurveyPercent(value, samples, nutrient) {
+  const values = samples
+    .map(sample => getMeasuredNutrient(sample, nutrient))
+    .filter(Number.isFinite);
+
+  if (!values.length) return 0;
+
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+
+  if (max <= min) return 50;
+
+  return clamp((value - min) / (max - min) * 100, 0, 100);
 }
 
 
@@ -4202,9 +4320,29 @@ function renderFieldHeatmap(
   }
 
 
+  const sourcePoints =
+    state.selectedCrop?.isSurvey
+      ? missionSamples.map(sample => ({
+          ...sample,
+          defN: 0,
+          defP: 0,
+          defK: 0
+        }))
+      : fertilizationAreas;
+
+  if (!sourcePoints.length) {
+    if (empty) empty.style.display = "flex";
+    return;
+  }
+
+  const commonOriginLat = missionSamples[0].latitude;
+  const commonOriginLon = missionSamples[0].longitude;
+
   const samples =
     convertSamplesToLocalXY(
-      missionSamples
+      sourcePoints,
+      commonOriginLat,
+      commonOriginLon
     );
 
 
@@ -4251,7 +4389,7 @@ function renderFieldHeatmap(
   */
 
   const footprint =
-    0.3048;
+    SAMPLING_AREA_SIZE_FT * 0.3048;
 
 
   minX -=
@@ -4424,14 +4562,14 @@ function renderFieldHeatmap(
         );
 
 
-      const severity =
-        interpolateIDW(
-          x,
-          y,
-          samples,
-          nutrient,
-          2
-        );
+      let severity;
+
+      if (state.selectedCrop?.isSurvey) {
+        const rawValue = interpolateMeasuredIDW(x, y, samples, nutrient, 2);
+        severity = relativeSurveyPercent(rawValue, samples, nutrient);
+      } else {
+        severity = interpolateIDW(x, y, samples, nutrient, 2);
+      }
 
 
       const color =
@@ -4524,7 +4662,14 @@ function renderFieldHeatmap(
      BLACK NUMBERED SAMPLE POINTS
   */
 
-  samples.forEach(
+  const displaySamples =
+    convertSamplesToLocalXY(
+      missionSamples,
+      commonOriginLat,
+      commonOriginLon
+    );
+
+  displaySamples.forEach(
     (
       sample,
       index
@@ -4675,16 +4820,12 @@ function renderDeficiencyHeatmaps() {
       ];
 
 
-    setText(
-      "dashboardHeatmapCrop",
-      `${state.selectedCrop.name} • ${nutrientName} deficiency`
-    );
+    const mapLabel = state.selectedCrop.isSurvey
+      ? `Soil survey • ${nutrientName} relative distribution`
+      : `${state.selectedCrop.name} • ${nutrientName} deficiency`;
 
-
-    setText(
-      "largeHeatmapCrop",
-      `${state.selectedCrop.name} • ${nutrientName} deficiency`
-    );
+    setText("dashboardHeatmapCrop", mapLabel);
+    setText("largeHeatmapCrop", mapLabel);
 
   }
 
@@ -4767,7 +4908,7 @@ el(
 function updateDeficiencySummary() {
 
   if (
-    !missionSamples.length
+    !fertilizationAreas.length
   ) {
 
     setText(
@@ -4795,7 +4936,7 @@ function updateDeficiencySummary() {
 
   const average =
     key =>
-      missionSamples.reduce(
+      fertilizationAreas.reduce(
         (
           total,
           sample
@@ -4804,7 +4945,7 @@ function updateDeficiencySummary() {
           sample[key],
         0
       ) /
-      missionSamples.length;
+      fertilizationAreas.length;
 
 
   setText(
@@ -4845,6 +4986,14 @@ function resetMissionSamples() {
 
   samplePackets =
     new Set();
+
+  sampleSignatures =
+    new Set();
+
+  fertilizationAreas =
+    [];
+
+  state.nutrientReferences = { n: 0, p: 0, k: 0 };
 
 
   heatmapFinalized =
@@ -5127,7 +5276,38 @@ function showSurveyRecommendation() {
   );
 
   const useButton =
-    el("useRecommendedCrop");
+    function selectCropWithoutReset(key) {
+  const crop = cropByKey(key);
+  if (!crop || crop.isSurvey) return;
+
+  state.selectedCrop = crop;
+  state.cropSent = false;
+
+  document.querySelectorAll(".crop-select-btn").forEach(button => {
+    button.classList.toggle("selected", button.dataset.crop === key);
+  });
+
+  setText("selectedCropName", crop.name);
+  setText("selectedCropBangla", crop.bangla);
+  setText("selectedCropIcon", cropIcon(crop));
+  setText("cropOptN", crop.n);
+  setText("cropOptP", crop.p);
+  setText("cropOptK", crop.k);
+  setText("cropCondition", crop.condition);
+  setText("dashboardCrop", crop.name);
+  setText("sideCrop", crop.name);
+  setText("dashboardTargetNpk", `N ${crop.n} • P ${crop.p} • K ${crop.k} kg/ha`);
+  setText("cropCommandPreview", `ROVER,CROP,${crop.key}`);
+  setText("cropSelectionStatus", "Recommended crop accepted");
+
+  rebuildFertilizationAreas();
+  renderDeficiencyHeatmaps();
+  updateDeficiencySummary();
+  updatePrescription();
+}
+
+
+el("useRecommendedCrop");
 
   if (useButton) {
     useButton.disabled = false;
@@ -5148,7 +5328,7 @@ el("useRecommendedCrop")
       const key =
         state.recommendedCrop.key;
 
-      selectCrop(key);
+      selectCropWithoutReset(key);
 
       toast(
         `${state.recommendedCrop?.name || "Recommended crop"} selected`
@@ -5282,79 +5462,24 @@ async function handleSamplingDone() {
 
 function calculatePrescription() {
 
-  if (
-    state.selectedCrop?.isSurvey
-  ) {
-    return null;
-  }
+  if (state.selectedCrop?.isSurvey) return null;
+  if (!fertilizationAreas.length) return null;
 
-  if (
-    !missionSamples.length
-  ) {
+  const average = key =>
+    fertilizationAreas.reduce((sum, area) => sum + area[key], 0) /
+    fertilizationAreas.length;
 
-    return null;
-
-  }
-
-
-  const average =
-    key =>
-      missionSamples.reduce(
-        (
-          total,
-          sample
-        ) =>
-          total +
-          sample[key],
-        0
-      ) /
-      missionSamples.length;
-
-
-  const maximum =
-    key =>
-      Math.max(
-        ...missionSamples.map(
-          sample =>
-            sample[key]
-        )
-      );
-
+  const maximum = key =>
+    Math.max(...fertilizationAreas.map(area => area[key]));
 
   return {
-
-    avgN:
-      average(
-        "requiredN"
-      ),
-
-    avgP:
-      average(
-        "requiredP"
-      ),
-
-    avgK:
-      average(
-        "requiredK"
-      ),
-
-    maxN:
-      maximum(
-        "requiredN"
-      ),
-
-    maxP:
-      maximum(
-        "requiredP"
-      ),
-
-    maxK:
-      maximum(
-        "requiredK"
-      )
-
+    avgN: average("requiredN"),
+    avgP: average("requiredP"),
+    avgK: average("requiredK"),
+    maxN: maximum("requiredN"),
+    maxP: maximum("requiredP"),
+    maxK: maximum("requiredK")
   };
-
 }
 
 
@@ -5482,6 +5607,32 @@ function updatePrescription() {
 
   }
 
+
+  const latestArea = latestFertilizationArea();
+
+  if (latestArea) {
+    setText("treatmentAreaSize", `${FERTILIZATION_AREA_SIZE_FT} × ${FERTILIZATION_AREA_SIZE_FT} ft`);
+    setText("treatmentSampleCount", `${SAMPLES_PER_FERTILIZATION_AREA} samples`);
+
+    setText("areaDefN", `${latestArea.defN.toFixed(1)}%`);
+    setText("areaDefP", `${latestArea.defP.toFixed(1)}%`);
+    setText("areaDefK", `${latestArea.defK.toFixed(1)}%`);
+
+    setText("areaReqN", `${latestArea.requiredN.toFixed(2)} kg/ha`);
+    setText("areaReqP", `${latestArea.requiredP.toFixed(2)} kg/ha`);
+    setText("areaReqK", `${latestArea.requiredK.toFixed(2)} kg/ha`);
+
+    setText("areaNVolume", formatMaybe(latestArea.application.nVolumeMl, 2, " mL"));
+    setText("areaPVolume", formatMaybe(latestArea.application.pVolumeMl, 2, " mL"));
+    setText("areaKVolume", formatMaybe(latestArea.application.kVolumeMl, 2, " mL"));
+
+    setText("areaNTime", formatMaybe(latestArea.application.nTimeSec, 2, " s"));
+    setText("areaPTime", formatMaybe(latestArea.application.pTimeSec, 2, " s"));
+    setText("areaKTime", formatMaybe(latestArea.application.kTimeSec, 2, " s"));
+
+    setText("calibrationState", calibrationReady() ? "Ready" : "Calibration required");
+  }
+
 }
 
 
@@ -5491,55 +5642,35 @@ function updatePrescription() {
 
 async function startAutonomousFertilization() {
 
-  const prescription =
-    calculatePrescription();
-
-
-  if (
-    !prescription
-  ) {
-
+  if (state.selectedCrop?.isSurvey) {
+    toast("Accept a crop before fertilization");
     return;
-
   }
 
+  const area = latestFertilizationArea();
+
+  if (!area) {
+    toast("Four valid samples are required before fertilization");
+    return;
+  }
+
+  if (!calibrationReady()) {
+    setFertilizationState("CALIBRATION REQUIRED");
+    toast("Enter fertilizer concentration and measured flow before automatic application");
+    return;
+  }
 
   const command =
-    `FERT,PRESCRIPTION,` +
-    `${prescription.avgN.toFixed(2)},` +
-    `${prescription.avgP.toFixed(2)},` +
-    `${prescription.avgK.toFixed(2)}`;
+    `FERT,AREA,${area.requiredN.toFixed(2)},${area.requiredP.toFixed(2)},${area.requiredK.toFixed(2)},` +
+    `${area.application.nTimeSec.toFixed(2)},${area.application.pTimeSec.toFixed(2)},${area.application.kTimeSec.toFixed(2)}`;
 
+  const sent = await sendBaseCommand(command);
+  if (!sent) return;
 
-  const sent =
-    await sendBaseCommand(
-      command
-    );
+  await sendBaseCommand("FERT,AUTO_START");
 
-
-  if (
-    !sent
-  ) {
-
-    return;
-
-  }
-
-
-  await sendBaseCommand(
-    "FERT,AUTO_START"
-  );
-
-
-  setFertilizationState(
-    "AUTO START SENT"
-  );
-
-
-  updateSequence(
-    "FERTILIZING"
-  );
-
+  setFertilizationState("AUTO START SENT");
+  updateSequence("FERTILIZING");
 }
 
 
@@ -6762,6 +6893,58 @@ function renderAlerts() {
 
 
 /* =========================================================
+   FERTILIZER CALIBRATION UI
+========================================================= */
+
+function populateCalibrationInputs() {
+  const values = {
+    nSolutionConcentration: fertilizerCalibration.nConcentration,
+    pSolutionConcentration: fertilizerCalibration.pConcentration,
+    kSolutionConcentration: fertilizerCalibration.kConcentration,
+    nFlowRate: fertilizerCalibration.nFlow,
+    pFlowRate: fertilizerCalibration.pFlow,
+    kFlowRate: fertilizerCalibration.kFlow
+  };
+
+  Object.entries(values).forEach(([id, value]) => {
+    const input = el(id);
+    if (input) input.value = value > 0 ? value : "";
+  });
+
+  setText("calibrationState", calibrationReady() ? "Ready" : "Calibration required");
+}
+
+
+function saveFertilizerCalibration() {
+  const read = id => Number(el(id)?.value || 0);
+
+  fertilizerCalibration.nConcentration = read("nSolutionConcentration");
+  fertilizerCalibration.pConcentration = read("pSolutionConcentration");
+  fertilizerCalibration.kConcentration = read("kSolutionConcentration");
+  fertilizerCalibration.nFlow = read("nFlowRate");
+  fertilizerCalibration.pFlow = read("pFlowRate");
+  fertilizerCalibration.kFlow = read("kFlowRate");
+
+  localStorage.setItem("agriroverNConcentration", fertilizerCalibration.nConcentration);
+  localStorage.setItem("agriroverPConcentration", fertilizerCalibration.pConcentration);
+  localStorage.setItem("agriroverKConcentration", fertilizerCalibration.kConcentration);
+  localStorage.setItem("agriroverNFlow", fertilizerCalibration.nFlow);
+  localStorage.setItem("agriroverPFlow", fertilizerCalibration.pFlow);
+  localStorage.setItem("agriroverKFlow", fertilizerCalibration.kFlow);
+
+  rebuildFertilizationAreas();
+  updatePrescription();
+
+  setText("calibrationState", calibrationReady() ? "Ready" : "Calibration required");
+  toast(calibrationReady() ? "Fertilizer calibration saved" : "Calibration saved — complete all six values for ON-time calculation");
+}
+
+
+el("saveFertilizerCalibration")
+  ?.addEventListener("click", saveFertilizerCalibration);
+
+
+/* =========================================================
    RESIZE HEATMAP
 ========================================================= */
 
@@ -6822,6 +7005,9 @@ updateSequence(
 renderDeficiencyHeatmaps();
 
 
+populateCalibrationInputs();
+
+
 setText(
   "telemetrySamplingState",
   "NOT_STARTED"
@@ -6840,7 +7026,7 @@ console.log(
 
 
 console.log(
-  "AgriRover GUI V15 loaded"
+  "AgriRover GUI V17 loaded"
 );
 
 
