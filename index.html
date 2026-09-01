@@ -32,7 +32,7 @@
 
   <link
     rel="stylesheet"
-    href="styles.css?v=16"
+    href="styles.css?v=18"
   >
 </head>
 
@@ -484,8 +484,8 @@
 
             <h3>Current Requirement</h3>
 
-            <span class="badge amber">
-              Rover calculated
+            <span class="badge green">
+              GUI calculated
             </span>
 
           </div>
@@ -517,7 +517,7 @@
           <div class="target-box">
 
             <small>
-              Selected crop optimum
+              Selected crop target (BARC basis)
             </small>
 
             <strong id="dashboardTargetNpk">
@@ -2107,14 +2107,52 @@
         <div class="panel-heading">
           <div>
             <h3>Raspberry Pi Sprinkler Detection Feed</h3>
-            <p class="section-description">Reserved for the Pi processed camera stream. The video connection can be enabled later without changing the nutrient or fertilizer logic.</p>
+            <p class="section-description">Live processed video from the Raspberry Pi. The Pi draws the detection box; the GUI separately reads detection metadata from <code>/detection</code>.</p>
           </div>
-          <span class="badge blue">Not connected</span>
+          <span class="badge blue" id="piVideoState">OFFLINE</span>
         </div>
-        <div class="pi-video-placeholder">
-          <div class="pi-video-icon">▣</div>
-          <strong>Pi camera feed will appear here</strong>
-          <span>Sprinkler detection video integration is intentionally left inactive for now.</span>
+
+        <div class="pi-connect-row">
+          <label class="pi-address-label">
+            Pi server address
+            <input id="piServerAddress" type="text" value="http://192.168.1.20:5000" spellcheck="false" autocomplete="off">
+          </label>
+          <button class="btn primary" id="connectPiCamera">Connect Camera</button>
+          <button class="btn secondary" id="disconnectPiCamera" disabled>Disconnect</button>
+        </div>
+
+        <div class="pi-video-layout">
+          <div class="pi-video-frame">
+            <img id="piCameraFeed" alt="Raspberry Pi sprinkler detection feed">
+            <div class="pi-video-overlay" id="piVideoOverlay">
+              <div class="pi-video-icon">▣</div>
+              <strong>Camera disconnected</strong>
+              <span>Enter the Pi address and connect when both devices are on the same network.</span>
+            </div>
+          </div>
+
+          <div class="pi-detection-panel">
+            <div class="detection-state-card">
+              <small>Detection</small>
+              <strong id="piDetectionState">WAITING</strong>
+            </div>
+            <div class="detection-state-card">
+              <small>Confidence</small>
+              <strong id="piDetectionConfidence">--%</strong>
+            </div>
+            <div class="detection-state-card">
+              <small>Object</small>
+              <strong id="piDetectionClass">--</strong>
+            </div>
+            <div class="detection-state-card">
+              <small>Bounding box</small>
+              <strong id="piDetectionBox">-- × -- px</strong>
+            </div>
+            <div class="detection-state-card full">
+              <small>Metadata</small>
+              <strong id="piMetadataState">Not connected</strong>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -2172,6 +2210,16 @@
           </div>
           <div class="treatment-grid">
             <strong>K</strong><span id="areaDefK">--%</span><span id="areaReqK">--</span><span id="areaKVolume">Calibration required</span><span id="areaKTime">Calibration required</span>
+          </div>
+
+          <div class="application-summary">
+            <div><small>Total solution</small><strong id="areaTotalVolume">Calibration required</strong></div>
+            <div><small>Total valve ON time</small><strong id="areaTotalTime">Calibration required</strong></div>
+            <div><small>Calculation source</small><strong>GUI • 4-sample average</strong></div>
+          </div>
+
+          <div class="action-row">
+            <button class="btn primary" id="applyCurrentPrescription">Apply Current Prescription</button>
           </div>
 
           <p class="panel-note">
@@ -2578,7 +2626,7 @@
   src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
 ></script>
 
-<script src="app.js?v=17"></script>
+<script src="app.js?v=18"></script>
 
 </body>
 
