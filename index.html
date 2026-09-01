@@ -32,7 +32,7 @@
 
   <link
     rel="stylesheet"
-    href="styles.css?v=18"
+    href="styles.css?v=19"
   >
 </head>
 
@@ -474,171 +474,113 @@
 
         </section>
 
+        <!-- NUTRIENT STATUS: MEASURED + GUI-CALCULATED REQUIREMENT -->
 
-
-        <!-- CURRENT REQUIREMENT -->
-
-        <section class="panel current-requirement-panel">
+        <section class="panel nutrient-status-panel">
 
           <div class="panel-heading">
-
-            <h3>Current Requirement</h3>
-
-            <span class="badge green">
-              GUI calculated
-            </span>
-
+            <div>
+              <h3>Nutrient Status</h3>
+              <small class="section-description">Live measured NPK with GUI-calculated crop requirement</small>
+            </div>
+            <span class="badge green">GUI calculated</span>
           </div>
 
+          <div class="nutrient-status-grid">
 
-          <div class="requirement-grid">
+            <div class="nutrient-status-column">
+              <div class="nutrient-subheading">Measured NPK <span class="live-dot">● Live</span></div>
 
-            <div>
-              <span>Required N</span>
-              <strong id="reqN">--</strong>
-              <small>kg/ha</small>
+              <div class="gauges compact-gauges">
+                <div class="gauge" style="--value:0">
+                  <div><strong id="nGauge">--</strong><small>mg/kg</small></div>
+                  <span>Nitrogen</span>
+                </div>
+                <div class="gauge" style="--value:0">
+                  <div><strong id="pGauge">--</strong><small>mg/kg</small></div>
+                  <span>Phosphorus</span>
+                </div>
+                <div class="gauge" style="--value:0">
+                  <div><strong id="kGauge">--</strong><small>mg/kg</small></div>
+                  <span>Potassium</span>
+                </div>
+              </div>
+
+              <div class="sensor-footer">
+                <span><i class="dot disconnected-dot" id="sensorStatusDot"></i><span id="sensorStatusText">Waiting for data</span></span>
+              </div>
+
+              <div class="data-timestamp">
+                <div><span class="timestamp-label">Last Sensor Update</span><strong id="sensorTimestamp">No data received</strong></div>
+                <div><span class="timestamp-label">Data Age</span><strong id="sensorDataAge">No data</strong></div>
+              </div>
             </div>
 
-            <div>
-              <span>Required P</span>
-              <strong id="reqP">--</strong>
-              <small>kg/ha</small>
+            <div class="nutrient-status-column requirement-side">
+              <div class="nutrient-subheading">Current Requirement <span class="source-note">4-sample average</span></div>
+
+              <div class="requirement-grid compact-requirement-grid">
+                <div><span>Required N</span><strong id="reqN">--</strong><small>kg/ha</small></div>
+                <div><span>Required P</span><strong id="reqP">--</strong><small>kg/ha</small></div>
+                <div><span>Required K</span><strong id="reqK">--</strong><small>kg/ha</small></div>
+              </div>
+
+              <div class="target-box">
+                <small>Selected crop target (BARC basis)</small>
+                <strong id="dashboardTargetNpk">Select crop first</strong>
+              </div>
+
+              <div class="dashboard-application-mini">
+                <div><small>Application area</small><strong>6 × 6 ft</strong></div>
+                <div><small>Samples used</small><strong>4</strong></div>
+                <div><small>Calculation</small><strong>GUI</strong></div>
+              </div>
             </div>
-
-            <div>
-              <span>Required K</span>
-              <strong id="reqK">--</strong>
-              <small>kg/ha</small>
-            </div>
-
-          </div>
-
-
-          <div class="target-box">
-
-            <small>
-              Selected crop target (BARC basis)
-            </small>
-
-            <strong id="dashboardTargetNpk">
-              Select crop first
-            </strong>
 
           </div>
 
         </section>
 
 
+        <!-- DASHBOARD VIDEO FEED -->
 
-        <!-- MEASURED NPK -->
-
-        <section class="panel sensor-panel">
-
+        <section class="panel pi-video-panel dashboard-video-panel">
           <div class="panel-heading">
-
-            <h3>Measured NPK</h3>
-
-            <span class="live-dot">
-              ● Live
-            </span>
-
-          </div>
-
-
-          <div class="gauges">
-
-            <div
-              class="gauge"
-              style="--value:0"
-            >
-
-              <div>
-                <strong id="nGauge">--</strong>
-                <small>mg/kg</small>
-              </div>
-
-              <span>Nitrogen</span>
-
-            </div>
-
-
-            <div
-              class="gauge"
-              style="--value:0"
-            >
-
-              <div>
-                <strong id="pGauge">--</strong>
-                <small>mg/kg</small>
-              </div>
-
-              <span>Phosphorus</span>
-
-            </div>
-
-
-            <div
-              class="gauge"
-              style="--value:0"
-            >
-
-              <div>
-                <strong id="kGauge">--</strong>
-                <small>mg/kg</small>
-              </div>
-
-              <span>Potassium</span>
-
-            </div>
-
-          </div>
-
-
-          <div class="sensor-footer">
-
-            <span>
-
-              <i
-                class="dot disconnected-dot"
-                id="sensorStatusDot"
-              ></i>
-
-              <span id="sensorStatusText">
-                Waiting for data
-              </span>
-
-            </span>
-
-          </div>
-
-
-          <div class="data-timestamp">
-
             <div>
-              <span class="timestamp-label">
-                Last Sensor Update
-              </span>
-
-              <strong id="sensorTimestamp">
-                No data received
-              </strong>
+              <h3>Live Sprinkler Detection</h3>
+              <small class="section-description">Processed Raspberry Pi camera feed</small>
             </div>
-
-
-            <div>
-              <span class="timestamp-label">
-                Data Age
-              </span>
-
-              <strong id="sensorDataAge">
-                No data
-              </strong>
-            </div>
-
+            <span class="badge blue" id="piVideoState">OFFLINE</span>
           </div>
 
+          <div class="pi-connect-row dashboard-pi-connect">
+            <label class="pi-address-label">
+              Pi server address
+              <input id="piServerAddress" type="text" value="http://192.168.1.20:5000" spellcheck="false" autocomplete="off">
+            </label>
+            <button class="btn primary" id="connectPiCamera">Connect</button>
+            <button class="btn secondary" id="disconnectPiCamera" disabled>Disconnect</button>
+          </div>
+
+          <div class="dashboard-pi-layout">
+            <div class="pi-video-frame dashboard-pi-frame">
+              <img id="piCameraFeed" alt="Raspberry Pi sprinkler detection feed">
+              <div class="pi-video-overlay" id="piVideoOverlay">
+                <div class="pi-video-icon">▣</div>
+                <strong>Camera disconnected</strong>
+                <span>Connect the Raspberry Pi when both devices are on the same network.</span>
+              </div>
+            </div>
+
+            <div class="dashboard-detection-strip">
+              <div class="detection-state-card"><small>Detection</small><strong id="piDetectionState">WAITING</strong></div>
+              <div class="detection-state-card"><small>Confidence</small><strong id="piDetectionConfidence">--%</strong></div>
+              <div class="detection-state-card"><small>Object</small><strong id="piDetectionClass">--</strong></div>
+              <div class="detection-state-card"><small>Bounding box</small><strong id="piDetectionBox">-- × -- px</strong></div>
+              <div class="detection-state-card full"><small>Metadata</small><strong id="piMetadataState">Not connected</strong></div>
+            </div>
+          </div>
         </section>
-
 
 
         <!-- DASHBOARD HEATMAP -->
@@ -2102,61 +2044,6 @@
 
       </section>
 
-
-      <section class="panel pi-video-panel">
-        <div class="panel-heading">
-          <div>
-            <h3>Raspberry Pi Sprinkler Detection Feed</h3>
-            <p class="section-description">Live processed video from the Raspberry Pi. The Pi draws the detection box; the GUI separately reads detection metadata from <code>/detection</code>.</p>
-          </div>
-          <span class="badge blue" id="piVideoState">OFFLINE</span>
-        </div>
-
-        <div class="pi-connect-row">
-          <label class="pi-address-label">
-            Pi server address
-            <input id="piServerAddress" type="text" value="http://192.168.1.20:5000" spellcheck="false" autocomplete="off">
-          </label>
-          <button class="btn primary" id="connectPiCamera">Connect Camera</button>
-          <button class="btn secondary" id="disconnectPiCamera" disabled>Disconnect</button>
-        </div>
-
-        <div class="pi-video-layout">
-          <div class="pi-video-frame">
-            <img id="piCameraFeed" alt="Raspberry Pi sprinkler detection feed">
-            <div class="pi-video-overlay" id="piVideoOverlay">
-              <div class="pi-video-icon">▣</div>
-              <strong>Camera disconnected</strong>
-              <span>Enter the Pi address and connect when both devices are on the same network.</span>
-            </div>
-          </div>
-
-          <div class="pi-detection-panel">
-            <div class="detection-state-card">
-              <small>Detection</small>
-              <strong id="piDetectionState">WAITING</strong>
-            </div>
-            <div class="detection-state-card">
-              <small>Confidence</small>
-              <strong id="piDetectionConfidence">--%</strong>
-            </div>
-            <div class="detection-state-card">
-              <small>Object</small>
-              <strong id="piDetectionClass">--</strong>
-            </div>
-            <div class="detection-state-card">
-              <small>Bounding box</small>
-              <strong id="piDetectionBox">-- × -- px</strong>
-            </div>
-            <div class="detection-state-card full">
-              <small>Metadata</small>
-              <strong id="piMetadataState">Not connected</strong>
-            </div>
-          </div>
-        </div>
-      </section>
-
-
       <div class="two-column">
 
         <section class="panel">
@@ -2626,7 +2513,7 @@
   src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
 ></script>
 
-<script src="app.js?v=18"></script>
+<script src="app.js?v=19"></script>
 
 </body>
 
