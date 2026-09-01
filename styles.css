@@ -5076,3 +5076,191 @@ th {
     min-height: 260px;
   }
 }
+
+/* =========================================================
+   FINAL DASHBOARD LAYOUT — COMBINED NPK + LIVE PI VIDEO
+========================================================= */
+
+.nutrient-status-panel {
+  grid-column: 1;
+}
+
+.dashboard-video-panel {
+  grid-column: 3;
+}
+
+.deficiency-panel {
+  grid-column: 2 / 4;
+}
+
+.nutrient-status-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+.nutrient-status-column {
+  min-width: 0;
+}
+
+.nutrient-status-column + .nutrient-status-column {
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.nutrient-subheading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+  color: var(--text);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .035em;
+}
+
+.source-note {
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.compact-gauges {
+  gap: 8px;
+}
+
+.compact-gauges .gauge {
+  transform: scale(.92);
+  transform-origin: center top;
+}
+
+.compact-requirement-grid {
+  gap: 7px;
+}
+
+.compact-requirement-grid > div {
+  min-height: 76px;
+}
+
+.dashboard-application-mini {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 9px;
+}
+
+.dashboard-application-mini > div {
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--panel-dark);
+}
+
+.dashboard-application-mini small {
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.dashboard-application-mini strong {
+  font-size: 9px;
+}
+
+.dashboard-pi-connect {
+  grid-template-columns: 1fr auto auto;
+  gap: 7px;
+  margin: 8px 0 10px;
+}
+
+.dashboard-pi-connect .pi-address-label {
+  grid-column: 1 / -1;
+}
+
+.dashboard-pi-connect .btn {
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.dashboard-pi-layout {
+  display: grid;
+  gap: 9px;
+}
+
+.dashboard-pi-frame,
+.dashboard-pi-frame #piCameraFeed {
+  min-height: 250px;
+  height: 250px;
+}
+
+.dashboard-detection-strip {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.dashboard-detection-strip .detection-state-card {
+  min-height: 58px;
+  padding: 9px 10px;
+}
+
+.dashboard-detection-strip .detection-state-card.full {
+  grid-column: 1 / -1;
+  min-height: 58px;
+}
+
+.dashboard-detection-strip .detection-state-card small {
+  font-size: 8px;
+}
+
+.dashboard-detection-strip .detection-state-card strong {
+  font-size: 9px;
+}
+
+@media (max-width: 1200px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .overview-panel,
+  .nutrient-status-panel {
+    grid-column: 1;
+  }
+
+  .rover-map-panel,
+  .dashboard-video-panel {
+    grid-column: 2;
+  }
+
+  .deficiency-panel {
+    grid-column: 1 / 3;
+  }
+}
+
+@media (max-width: 780px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .overview-panel,
+  .rover-map-panel,
+  .nutrient-status-panel,
+  .dashboard-video-panel,
+  .deficiency-panel,
+  .control-panel {
+    grid-column: 1;
+  }
+
+  .dashboard-application-mini,
+  .dashboard-detection-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-detection-strip .detection-state-card.full {
+    grid-column: 1;
+  }
+}
