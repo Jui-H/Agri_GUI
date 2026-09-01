@@ -4901,3 +4901,178 @@ th {
     display: none;
   }
 }
+
+/* =========================================================
+   FINAL V18 - PI VIDEO + APPLICATION SUMMARY
+========================================================= */
+
+.pi-connect-row {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) auto auto;
+  gap: 12px;
+  align-items: end;
+  margin: 16px 0;
+}
+
+.pi-address-label {
+  display: grid;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--muted, #8fa8ba);
+}
+
+.pi-address-label input {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid rgba(116, 160, 186, .25);
+  background: rgba(5, 20, 30, .72);
+  color: #eaf8ff;
+  border-radius: 8px;
+  padding: 0 12px;
+  outline: none;
+}
+
+.pi-address-label input:focus {
+  border-color: rgba(77, 168, 255, .85);
+  box-shadow: 0 0 0 2px rgba(77, 168, 255, .12);
+}
+
+.pi-video-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2.4fr) minmax(220px, .75fr);
+  gap: 14px;
+}
+
+.pi-video-frame {
+  position: relative;
+  min-height: 420px;
+  overflow: hidden;
+  border-radius: 10px;
+  border: 1px solid rgba(116, 160, 186, .24);
+  background: #020b12;
+}
+
+#piCameraFeed {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 420px;
+  object-fit: contain;
+  background: #020b12;
+}
+
+.pi-video-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+  padding: 32px;
+  background: radial-gradient(circle at center, rgba(19, 53, 72, .58), rgba(2, 11, 18, .94));
+  color: #c6d7e3;
+}
+
+.pi-video-overlay.hidden {
+  display: none;
+}
+
+.pi-video-overlay strong {
+  color: #f3fbff;
+  font-size: 16px;
+}
+
+.pi-video-overlay span {
+  max-width: 520px;
+  color: #829daf;
+  line-height: 1.5;
+}
+
+.pi-detection-panel {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.detection-state-card {
+  min-height: 80px;
+  display: grid;
+  align-content: center;
+  gap: 7px;
+  padding: 13px 14px;
+  border-radius: 9px;
+  border: 1px solid rgba(116, 160, 186, .22);
+  background: rgba(5, 24, 35, .72);
+}
+
+.detection-state-card small {
+  color: #7896aa;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  font-size: 10px;
+}
+
+.detection-state-card strong {
+  color: #f2fbff;
+  overflow-wrap: anywhere;
+}
+
+.detection-state-card.full {
+  min-height: 92px;
+}
+
+.application-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 14px 0 4px;
+}
+
+.application-summary > div {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid rgba(116, 160, 186, .22);
+  border-radius: 8px;
+  background: rgba(6, 27, 39, .58);
+}
+
+.application-summary small {
+  color: #7896aa;
+}
+
+.application-summary strong {
+  color: #e8f7ff;
+}
+
+@media (max-width: 1000px) {
+  .pi-video-layout {
+    grid-template-columns: 1fr;
+  }
+  .pi-detection-panel {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .pi-connect-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .pi-address-label {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 650px) {
+  .pi-detection-panel,
+  .application-summary,
+  .pi-connect-row {
+    grid-template-columns: 1fr;
+  }
+  .pi-address-label {
+    grid-column: auto;
+  }
+  .pi-video-frame,
+  #piCameraFeed {
+    min-height: 260px;
+  }
+}
