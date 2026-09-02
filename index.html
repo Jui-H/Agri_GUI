@@ -35,7 +35,7 @@
 
   <link
     rel="stylesheet"
-    href="styles-v26.css"
+    href="styles-v27.css"
   >
 </head>
 
@@ -2013,18 +2013,25 @@
         <div class="panel-heading">
           <div>
             <h3>Fertilizer Calibration</h3>
-            <p class="section-description">Enter the actual nutrient concentration of each solution and the measured liquid flow. These values are required before the GUI calculates valve / sprinkler ON time.</p>
+            <p class="section-description">Enter the nutrient concentration of the prepared fertilizer solution. Flow is fixed at the measured 2 L/min and each fertilization area is fixed at 6 × 6 ft.</p>
           </div>
-          <span class="badge amber" id="calibrationStateSprinkler">Use measured values</span>
+          <span class="badge amber" id="calibrationStateSprinkler">Enter concentration</span>
         </div>
 
         <div class="calibration-grid">
-          <label>N concentration (g/L)<input id="nSolutionConcentration" type="number" min="0" step="0.01" placeholder="Measure / prepare value"></label>
-          <label>P concentration (g/L)<input id="pSolutionConcentration" type="number" min="0" step="0.01" placeholder="Measure / prepare value"></label>
-          <label>K concentration (g/L)<input id="kSolutionConcentration" type="number" min="0" step="0.01" placeholder="Measure / prepare value"></label>
-          <label>N flow (mL/min)<input id="nFlowRate" type="number" min="0" step="0.1" placeholder="Measured flow"></label>
-          <label>P flow (mL/min)<input id="pFlowRate" type="number" min="0" step="0.1" placeholder="Measured flow"></label>
-          <label>K flow (mL/min)<input id="kFlowRate" type="number" min="0" step="0.1" placeholder="Measured flow"></label>
+          <label>N nutrient concentration (g/L)<input id="nSolutionConcentration" type="number" min="0" step="0.01" placeholder="Enter N concentration"></label>
+          <label>P nutrient concentration (g/L)<input id="pSolutionConcentration" type="number" min="0" step="0.01" placeholder="Enter P concentration"></label>
+          <label>K nutrient concentration (g/L)<input id="kSolutionConcentration" type="number" min="0" step="0.01" placeholder="Enter K concentration"></label>
+          <div class="calibration-fixed-value">
+            <span>Measured flow rate</span>
+            <strong id="fixedFlowRateDisplay">2.0 L/min</strong>
+            <small>Fixed • 2000 mL/min</small>
+          </div>
+          <div class="calibration-fixed-value">
+            <span>Fertilization area</span>
+            <strong>6 × 6 ft</strong>
+            <small>Fixed • 36 ft²</small>
+          </div>
         </div>
 
         <div class="action-row">
@@ -2095,11 +2102,11 @@
           </div>
 
           <div class="action-row">
-            <button class="btn primary" id="applyCurrentPrescription">Apply Current Prescription</button>
+            <button class="btn primary" id="applyCurrentPrescription">Apply Fertilizer</button>
           </div>
 
           <p class="panel-note">
-            Deficiency uses the 95th-percentile field reading as the robust nutrient reference. Required kg/ha = crop target × deficiency fraction. ON time appears only after real solution concentration and measured flow are entered.
+            Deficiency uses the selected crop and measured field deficiency. The GUI calculates the required solution for the fixed 6 × 6 ft area, then converts it to sprinkler ON time using the measured 2 L/min flow. Press Apply Current Prescription to send the command to the rover.
           </p>
 
         </section>
@@ -2478,7 +2485,7 @@
   src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
 ></script>
 
-<script src="app-v26.js"></script>
+<script src="app-v27.js"></script>
 
 </body>
 
