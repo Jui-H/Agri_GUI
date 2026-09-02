@@ -35,7 +35,7 @@
 
   <link
     rel="stylesheet"
-    href="styles-v27.css"
+    href="styles-v28.css"
   >
 </head>
 
@@ -2016,6 +2016,7 @@
             <p class="section-description">Enter the nutrient concentration of the prepared fertilizer solution. Flow is fixed at the measured 2 L/min and each fertilization area is fixed at 6 × 6 ft.</p>
           </div>
           <span class="badge amber" id="calibrationStateSprinkler">Enter concentration</span>
+          <span class="badge">Auto trigger: SAMPLE,DONE</span>
         </div>
 
         <div class="calibration-grid">
@@ -2102,11 +2103,11 @@
           </div>
 
           <div class="action-row">
-            <button class="btn primary" id="applyCurrentPrescription">Apply Fertilizer</button>
+            <button class="btn primary" id="applyCurrentPrescription">Apply Fertilizer Manually</button>
           </div>
 
           <p class="panel-note">
-            Deficiency uses the selected crop and measured field deficiency. The GUI calculates the required solution for the fixed 6 × 6 ft area, then converts it to sprinkler ON time using the measured 2 L/min flow. Press Apply Current Prescription to send the command to the rover.
+            Deficiency uses the selected crop and measured field deficiency. The GUI calculates the required solution for the fixed 6 × 6 ft area, then converts it to sprinkler ON time using the measured 2 L/min flow. When the rover sends SAMPLE,DONE through LoRa, the GUI automatically sends the calculated sprinkler ON time back to the rover.
           </p>
 
         </section>
@@ -2485,7 +2486,7 @@
   src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
 ></script>
 
-<script src="app-v27.js"></script>
+<script src="app-v28.js"></script>
 
 </body>
 
